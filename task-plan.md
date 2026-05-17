@@ -1,8 +1,8 @@
 # Task Plan Implementasi — QRCC Data Center
 
-> **Versi**: 1.0 · **Terakhir diperbarui**: 2026-05-17
+> **Versi**: 2.0 · **Terakhir diperbarui**: 2026-05-17
 >
-> Checklist ini menggantikan roadmap linear lama dengan task plan komprehensif. Urutan sengaja dibuat **frontend-first** agar shell, navigasi, UX workflow, dan kontrak data halaman jelas lebih dulu, lalu backend diisi mengikuti kebutuhan UI dan report.
+> Checklist ini memakai pendekatan **data-truth-first vertical slice**. Milestone pertama bukan jumlah halaman, tetapi bukti bahwa workflow April 2026 LCD LOCAL menghasilkan angka FQMS/F-COST yang akurat, auditable, dan bisa diexport.
 
 ---
 
@@ -13,281 +13,237 @@
 - [ ] Pertahankan boundary backend: API controller → service → repository → SQLite.
 - [ ] Pertahankan Excel sebagai output/template saja, bukan database.
 - [ ] Simpan raw rows agar semua angka summary/report bisa ditelusuri ulang.
+- [ ] Preview dan Excel export harus berasal dari report view model yang sama.
+- [ ] Critical validation issue memblokir export; warning/CHECK tidak memblokir export.
+- [ ] Portable packaging dibuktikan dini dengan portable Node bundle smoke test.
+
+---
+
+## Slice 0 — April 2026 LCD LOCAL Accuracy Slice
+
+Slice pertama sengaja kecil agar rule data, parser, aggregation, validation, preview, Excel export, dan packaging smoke test terbukti sebelum scope diperluas.
+
+Scope terkunci:
+
+- [ ] Report month: April 2026 (`202604`).
+- [ ] Product: LCD.
+- [ ] Manufacturer/report scope: LOCAL.
+- [ ] Input: sales CSV dan raw service CSV.
+- [ ] Output: FQMS ringkas, F-COST ringkas, preview, Excel export.
+- [ ] Template referensi: `templates/excel/FQMS - LCD LOCAL.xlsx` dan `templates/excel/FCOST - LCD LOCAL.xlsx`.
+- [ ] Quantity/count harus exact terhadap referensi.
+- [ ] Cost/amount boleh berbeda hanya karena pembulatan presentasi.
+- [ ] FQMS claim quantity memakai `job_sheet_section = 1`.
+- [ ] F-COST memakai semua cost rows valid.
+- [ ] Cost disimpan dalam rupiah asli.
+- [ ] Re-import same month + product + scope + import type memakai automatic replace.
+
+Gate lulus Slice 0:
+
+- [ ] Import sales dan raw service berhasil dengan header validation.
+- [ ] Re-import tidak menyebabkan double count.
+- [ ] FQMS quantity/count exact dengan referensi April 2026.
+- [ ] F-COST base amount exact sebelum formatting/rounding.
+- [ ] Validation membedakan blocking critical issue vs non-blocking warning/CHECK.
+- [ ] Preview dan Excel export membaca view model yang sama.
+- [ ] Portable Node bundle smoke test dapat menjalankan flow inti.
 
 ---
 
 ## Phase 0 — Project Hygiene dan Baseline
 
+- [ ] Pastikan script `pnpm dev` berjalan.
+- [ ] Pastikan `pnpm lint` berjalan.
+- [ ] Pastikan `pnpm lint:fix` berjalan.
+- [ ] Pastikan `pnpm typecheck` berjalan.
+- [ ] Pastikan `pnpm build` berjalan.
 - [ ] Pastikan Nuxt 4, Nuxt UI 4, Vue 3, dan TypeScript strict aktif.
-- [ ] Pastikan `pnpm lint` tersedia.
-- [ ] Pastikan `pnpm lint:fix` tersedia.
-- [ ] Pastikan `pnpm typecheck` tersedia dan berhasil.
 - [ ] Pastikan Tailwind CSS aktif melalui Nuxt UI/Tailwind v4 import.
-- [ ] Rapikan `app/app.vue`, layout, page index, dan CSS global agar sesuai struktur Nuxt 4.
-- [ ] Update dokumentasi command di `CLAUDE.md` setelah command benar-benar terverifikasi.
+- [ ] Rapikan app shell minimal hanya jika dibutuhkan untuk menjalankan Slice 0.
+- [ ] Update command di `CLAUDE.md` dari script aktual `package.json`.
 
-## Phase 1 — Frontend App Shell dan Navigasi
+## Phase 1 — Minimal SQLite + Drizzle Foundation
 
-- [ ] Buat layout utama dengan header, sidebar, main content, dan responsive behavior.
-- [ ] Buat identitas aplikasi: QRCC Data Center, FQMS & F-COST Workflow.
-- [ ] Buat route/page placeholder untuk dashboard `/`.
-- [ ] Buat route/page placeholder untuk `/report-months`.
-- [ ] Buat route/page placeholder untuk `/models`.
-- [ ] Buat route/page placeholder untuk `/references/factories`.
-- [ ] Buat route/page placeholder untuk `/references/defect-categories`.
-- [ ] Buat route/page placeholder untuk `/references/nondefect-categories`.
-- [ ] Buat route/page placeholder untuk `/references/repair-actions`.
-- [ ] Buat route/page placeholder untuk `/references/grouping-rules`.
-- [ ] Buat route/page placeholder untuk `/targets/fqms`.
-- [ ] Buat route/page placeholder untuk `/targets/fcost`.
-- [ ] Buat route/page placeholder untuk `/import`.
-- [ ] Buat route/page placeholder untuk `/import/sales`.
-- [ ] Buat route/page placeholder untuk `/import/raw-service`.
-- [ ] Buat route/page placeholder untuk `/entry/sales`.
-- [ ] Buat route/page placeholder untuk `/entry/summary`.
-- [ ] Buat route/page placeholder untuk `/entry/defect`.
-- [ ] Buat route/page placeholder untuk `/entry/nondefect`.
-- [ ] Buat route/page placeholder untuk `/entry/repair-action`.
-- [ ] Buat route/page placeholder untuk `/entry/fcost`.
-- [ ] Buat route/page placeholder untuk `/validation`.
-- [ ] Buat route/page placeholder untuk `/reports/preview`.
-- [ ] Buat route/page placeholder untuk `/reports/export`.
-- [ ] Buat route/page placeholder untuk `/settings/backup`.
-- [ ] Tambahkan active navigation state dan breadcrumb.
-- [ ] Tambahkan empty state standar untuk halaman yang belum punya data.
-
-## Phase 2 — Frontend Workflow State dan Mock Contracts
-
-- [ ] Definisikan TypeScript interface frontend untuk report month.
-- [ ] Definisikan TypeScript interface frontend untuk product/manufacturer scope.
-- [ ] Definisikan TypeScript interface frontend untuk import status.
-- [ ] Definisikan TypeScript interface frontend untuk validation status.
-- [ ] Definisikan TypeScript interface frontend untuk report preview summary.
-- [ ] Buat mock data lokal sementara untuk dashboard.
-- [ ] Buat dashboard cards: active month, selected scope, sales import status, raw service import status, validation status, next action.
-- [ ] Buat komponen reusable status badge `OK`/`CHECK`/`Missing`/`Draft`.
-- [ ] Buat komponen reusable page header.
-- [ ] Buat komponen reusable data table wrapper.
-- [ ] Buat komponen reusable confirm dialog untuk replace import dan destructive actions.
-- [ ] Buat komponen reusable month/scope selector.
-
-## Phase 3 — Frontend Import Center
-
-- [ ] Buat halaman `/import` sebagai hub sales CSV dan raw service CSV.
-- [ ] Buat UI upload sales CSV dengan drag/drop dan file picker.
-- [ ] Buat UI upload raw service CSV dengan drag/drop dan file picker.
-- [ ] Buat preview header CSV sebelum submit final.
-- [ ] Tampilkan row count, accepted count, rejected count, dan warning count.
-- [ ] Tampilkan missing required header error dengan jelas.
-- [ ] Tampilkan mode replace/reprocess agar user paham import lama akan diganti.
-- [ ] Buat import history table.
-- [ ] Buat loading/progress state untuk upload dan processing.
-- [ ] Buat error state yang actionable, termasuk link ke reference mapping jika factory/model belum dikenal.
-
-## Phase 4 — Frontend Master Data dan Target Pages
-
-- [ ] Buat UI CRUD report months dengan fiscal year/half derived display.
-- [ ] Buat UI CRUD models dengan launching month, active status, dan report include.
-- [ ] Buat UI CRUD factory mappings.
-- [ ] Buat UI CRUD model grouping rules.
-- [ ] Buat UI CRUD defect categories.
-- [ ] Buat UI CRUD non-defect categories.
-- [ ] Buat UI CRUD repair actions.
-- [ ] Buat UI CRUD FQMS target PPM per product/manufacturer/fiscal half.
-- [ ] Buat UI CRUD F-COST target per product/manufacturer/fiscal half.
-- [ ] Tambahkan form validation di UI sebelum API submit.
-- [ ] Tambahkan optimistic/refresh behavior yang konsisten.
-
-## Phase 5 — Frontend Review Pages
-
-- [ ] Buat review sales table dengan filter report month, product, manufacturer, model, factory.
-- [ ] Buat review monthly summary table.
-- [ ] Buat review defect category entries table.
-- [ ] Buat review non-defect category entries table.
-- [ ] Buat review repair action entries table.
-- [ ] Buat review F-COST summary table.
-- [ ] Buat review F-COST item breakdown table.
-- [ ] Buat review F-COST part category breakdown table.
-- [ ] Tambahkan indikator source import dan override flag.
-- [ ] Tambahkan UI manual override dengan remark wajib.
-- [ ] Tambahkan link dari validation issue ke row review terkait.
-
-## Phase 6 — Frontend Validation UI
-
-- [ ] Buat halaman `/validation` dengan ringkasan status per scope.
-- [ ] Tampilkan V1–V22 sebagai checklist hasil validasi.
-- [ ] Tampilkan severity, reason, dan related page link.
-- [ ] Tambahkan tombol run validation.
-- [ ] Tambahkan filter issue berdasarkan severity dan status.
-- [ ] Pastikan denominator missing/zero tampil sebagai CHECK, bukan angka `Infinity` atau `NaN`.
-
-## Phase 7 — Frontend Report Preview dan Export UX
-
-- [ ] Buat selector report type: FQMS/F-COST.
-- [ ] Buat selector report month, product, manufacturer.
-- [ ] Buat shell preview print-friendly.
-- [ ] Buat FQMS preview placeholder untuk Section A Quality Trend.
-- [ ] Buat FQMS preview placeholder untuk Section B Acceptance Ratio.
-- [ ] Buat FQMS preview placeholder untuk Section C Detail Model.
-- [ ] Buat FQMS preview placeholder untuk Section D Worst Defect.
-- [ ] Buat F-COST preview placeholder untuk summary cards.
-- [ ] Buat F-COST preview placeholder untuk Section A Monthly F-Cost.
-- [ ] Buat F-COST preview placeholder untuk Section B F-Cost Trend.
-- [ ] Buat F-COST preview placeholder untuk Section C Detail F-Cost & Part Contribution.
-- [ ] Tambahkan CSS print untuk A4 dan hide `.no-print`.
-- [ ] Tambahkan tombol `window.print()` untuk Print to PDF.
-- [ ] Tambahkan halaman `/reports/export` untuk Excel export dan export history.
-
-## Phase 8 — Backend Database Core
+Tujuan: membuat persistence minimum untuk membuktikan angka, bukan schema final semua modul.
 
 - [ ] Buat `drizzle.config.ts`.
 - [ ] Buat SQLite client di `server/db/client.ts`.
-- [ ] Buat schema Drizzle untuk `report_months`.
-- [ ] Buat schema Drizzle untuk `products`.
-- [ ] Buat schema Drizzle untuk `manufacturers`.
-- [ ] Buat schema Drizzle untuk `factory_mappings`.
-- [ ] Buat schema Drizzle untuk `models`.
-- [ ] Buat schema Drizzle untuk `model_group_rules`.
-- [ ] Buat schema Drizzle untuk `defect_categories`.
-- [ ] Buat schema Drizzle untuk `nondefect_categories`.
-- [ ] Buat schema Drizzle untuk `repair_actions`.
-- [ ] Buat schema Drizzle untuk `fiscal_quality_targets`.
-- [ ] Buat schema Drizzle untuk `fiscal_fcost_targets`.
-- [ ] Buat schema Drizzle untuk `data_imports`.
-- [ ] Buat schema Drizzle untuk `raw_sales_data`.
-- [ ] Buat schema Drizzle untuk `raw_service_data`.
-- [ ] Buat schema Drizzle untuk FQMS summary/entry tables.
-- [ ] Buat schema Drizzle untuk F-COST summary/breakdown tables.
-- [ ] Buat schema Drizzle untuk `validation_runs`.
-- [ ] Buat schema Drizzle untuk `export_jobs`.
+- [ ] Buat schema Drizzle minimal untuk report month/scope context.
+- [ ] Buat schema minimal untuk products dan manufacturers/scopes.
+- [ ] Buat schema minimal untuk factory mappings yang dibutuhkan Slice 0.
+- [ ] Buat schema `data_imports` untuk import session/history.
+- [ ] Buat schema `raw_sales_rows`.
+- [ ] Buat schema `raw_service_rows`.
+- [ ] Buat schema output ringkas FQMS.
+- [ ] Buat schema output ringkas F-COST.
+- [ ] Buat schema `validation_runs` dan validation issues.
+- [ ] Buat schema `export_jobs` jika Excel export sudah menyimpan history.
 - [ ] Generate migration awal.
 - [ ] Jalankan migration ke `data/sqlite.db`.
-- [ ] Buat seed awal untuk LCD, LOCAL, IMPORT, categories, actions, dan factory sample.
+- [ ] Buat seed minimal untuk April 2026, LCD, LOCAL, dan mapping sample yang dibutuhkan.
 
-## Phase 9 — Backend Repository Layer
+## Phase 2 — Repository Layer Minimum
 
-- [ ] Buat repository report months.
-- [ ] Buat repository products/manufacturers.
-- [ ] Buat repository factory mappings.
-- [ ] Buat repository models dan grouping rules.
-- [ ] Buat repository categories dan repair actions.
-- [ ] Buat repository targets.
+Tujuan: menjaga service tidak query Drizzle langsung.
+
 - [ ] Buat repository imports.
 - [ ] Buat repository raw sales rows.
 - [ ] Buat repository raw service rows.
-- [ ] Buat repository monthly summaries.
-- [ ] Buat repository validation runs.
-- [ ] Buat repository export jobs.
+- [ ] Buat repository scope/month lookup.
+- [ ] Buat repository minimal factory mappings.
+- [ ] Buat repository FQMS summary output.
+- [ ] Buat repository F-COST summary output.
+- [ ] Buat repository validation run/results.
 - [ ] Pastikan repository hanya CRUD/query, tanpa business calculation.
 
-## Phase 10 — Backend API Contracts untuk Frontend
+## Phase 3 — CSV Import Pipeline dan Replace Mode
 
-- [ ] Implement GET/POST `/api/report-months`.
-- [ ] Implement GET/POST `/api/models`.
-- [ ] Implement GET/POST `/api/references/factories`.
-- [ ] Implement GET/POST `/api/references/defect-categories`.
-- [ ] Implement GET/POST `/api/references/nondefect-categories`.
-- [ ] Implement GET/POST `/api/references/repair-actions`.
-- [ ] Implement GET/POST `/api/references/grouping-rules`.
-- [ ] Implement GET/POST `/api/targets/fqms`.
-- [ ] Implement GET/POST `/api/targets/fcost`.
-- [ ] Implement GET `/api/review/sales`.
-- [ ] Implement GET `/api/review/summary`.
-- [ ] Implement GET `/api/review/defect`.
-- [ ] Implement GET `/api/review/nondefect`.
-- [ ] Implement GET `/api/review/fcost`.
-- [ ] Pastikan API handler tidak berisi business logic atau query DB langsung.
+Tujuan: ingestion deterministic dan auditable.
 
-## Phase 11 — Backend CSV Parser dan Import Services
-
-- [ ] Implement required header validation untuk sales CSV.
-- [ ] Implement required header validation untuk raw service CSV.
+- [ ] Definisikan required headers untuk sales CSV.
+- [ ] Definisikan required headers untuk raw service CSV.
+- [ ] Implement header validation sales CSV.
+- [ ] Implement header validation raw service CSV.
 - [ ] Implement parser sales CSV streaming/Node mode.
 - [ ] Implement parser raw service CSV streaming/Node mode.
-- [ ] Simpan raw sales rows dengan raw JSON.
-- [ ] Simpan raw service rows dengan raw JSON.
-- [ ] Implement import history di `data_imports`.
-- [ ] Implement replace mode untuk same month + import type + product/manufacturer.
-- [ ] Implement factory mapping untuk split LOCAL/IMPORT.
-- [ ] Implement keydate month validation.
+- [ ] Simpan raw sales rows dengan raw JSON jika perlu.
+- [ ] Simpan raw service rows dengan raw JSON jika perlu.
+- [ ] Implement import metadata: filename, row count, accepted count, rejected count, warning count, timestamp.
+- [ ] Implement automatic replace untuk same month + product + scope + import type.
+- [ ] Implement split LOCAL berdasarkan factory mapping.
+- [ ] Implement keydate month validation untuk raw service.
 - [ ] Implement sample outlier reporting untuk row beda bulan.
-- [ ] Implement POST `/api/import/sales`.
-- [ ] Implement POST `/api/import/raw-service`.
-- [ ] Implement POST `/api/import/reprocess`.
-- [ ] Implement GET `/api/import/history`.
+- [ ] Implement `POST /api/import/sales`.
+- [ ] Implement `POST /api/import/raw-service`.
+- [ ] Implement `GET /api/import/history`.
 
-## Phase 12 — Backend Aggregation Proof of Accuracy
+Gate Phase 3:
 
-- [ ] Implement sales aggregation ke monthly model summaries.
-- [ ] Implement F-COST sales aggregation ke monthly F-COST summaries.
-- [ ] Implement defect/non-defect aggregation memakai rule `job_sheet_section`.
-- [ ] Implement repair action aggregation.
-- [ ] Implement F-COST item breakdown Part/Labor/Trip.
-- [ ] Implement F-COST part category breakdown.
-- [ ] Cross-check `total_cost` vs item cost sum.
-- [ ] Buat script/service proof untuk April 2026 sample CSV.
-- [ ] Bandingkan angka April 2026 terhadap Excel/PDF referensi.
-- [ ] Lock keputusan rule `job_sheet_section`.
-- [ ] Lock mapping `defect_category` sebagai status dan `defect` sebagai detail category.
-- [ ] Lock F-COST amount unit dan scaling Rp/Rp K.
+- [ ] Missing required header menolak import dengan error jelas.
+- [ ] Extra columns tidak merusak import.
+- [ ] Import ulang file yang sama mengganti raw rows lama, bukan append double.
+- [ ] Import history mencatat replace action.
 
-## Phase 13 — Backend Validation Engine
+## Phase 4 — Aggregation Proof of Accuracy
 
-- [ ] Implement V1 Import presence.
-- [ ] Implement V2 Header validation.
-- [ ] Implement V3 Report month consistency.
-- [ ] Implement V4 Factory mapping completeness.
-- [ ] Implement V5 Model mapping completeness.
-- [ ] Implement V6 Active model completeness.
-- [ ] Implement V7 Duplicate summary.
-- [ ] Implement V8 Sales qty presence.
-- [ ] Implement V9 Monthly PPM denominator.
-- [ ] Implement V10 Defect total match.
-- [ ] Implement V11 Non-defect total match.
-- [ ] Implement V12 Category standardization.
-- [ ] Implement V13 Target PPM presence.
-- [ ] Implement V14 F-COST completeness.
-- [ ] Implement V15 F-COST target presence.
-- [ ] Implement V16 F-COST item breakdown match.
-- [ ] Implement V17 F-COST part category match.
-- [ ] Implement V18 F-COST total cost cross-check.
-- [ ] Implement V19 LY F-Cost presence.
-- [ ] Implement V20 Previous fiscal half data.
-- [ ] Implement V21 Negative/outlier data.
-- [ ] Implement V22 Print readiness.
-- [ ] Implement POST `/api/validation/run`.
+Tujuan: membuktikan angka sebelum UI/report melebar.
+
+- [ ] Implement sales aggregation untuk denominator/summary Slice 0.
+- [ ] Implement FQMS claim quantity dari raw service `job_sheet_section = 1`.
+- [ ] Implement defect/non-defect ringkas yang dibutuhkan FQMS summary awal.
+- [ ] Implement F-COST aggregation dari semua valid cost rows.
+- [ ] Simpan F-COST amount dalam rupiah asli.
+- [ ] Cross-check `total_cost` vs parts/labor/transportation cost jika field tersedia.
+- [ ] Buat proof script/service untuk April 2026 LCD LOCAL.
+- [ ] Bandingkan FQMS quantity/count terhadap referensi Excel/PDF.
+- [ ] Bandingkan F-COST amount terhadap referensi Excel/PDF.
+- [ ] Catat mismatch sebagai blocking issue sebelum UI polish.
+
+Gate Phase 4:
+
+- [ ] FQMS count/quantity exact.
+- [ ] F-COST base sum exact sebelum formatting.
+- [ ] Tidak ada `Infinity`, `NaN`, atau angka misleading saat denominator kosong/zero.
+
+## Phase 5 — Validation Engine Minimum
+
+Tujuan: validasi menjadi gate operasional, bukan checklist abstrak.
+
+- [ ] Implement import presence validation.
+- [ ] Implement header validation result persistence.
+- [ ] Implement report month consistency validation.
+- [ ] Implement factory/model mapping completeness untuk Slice 0.
+- [ ] Implement duplicate/re-import safety validation.
+- [ ] Implement denominator safety validation.
+- [ ] Implement FQMS total consistency validation.
+- [ ] Implement F-COST total consistency validation.
+- [ ] Implement export readiness validation.
+- [ ] Implement severity: critical/error/warning.
+- [ ] Implement `POST /api/validation/run`.
 - [ ] Simpan validation run summary JSON.
 
-## Phase 14 — Backend Report View Models
+Gate Phase 5:
 
-- [ ] Build FQMS Section A view model.
-- [ ] Build FQMS Section B view model.
-- [ ] Build FQMS Section C view model.
-- [ ] Build FQMS Section D view model.
-- [ ] Build F-COST summary cards view model.
-- [ ] Build F-COST Section A view model.
-- [ ] Build F-COST Section B view model.
-- [ ] Build F-COST Section C view model.
-- [ ] Implement model grouping saat report render.
-- [ ] Implement fiscal half/current half period generation.
-- [ ] Implement LY F-Cost lookup.
-- [ ] Implement denominator safety untuk semua ratio/PPM.
-- [ ] Implement GET `/api/reports/view-model`.
+- [ ] Critical issue memblokir Excel export.
+- [ ] Warning/CHECK tetap tampil tetapi tidak memblokir export.
+- [ ] Tiap issue punya reason dan related data reference jika tersedia.
 
-## Phase 15 — Excel Export, Backup, dan Packaging
+## Phase 6 — Report View Model, Preview, dan Excel Export
 
-- [ ] Map FQMS view model ke template workbook `FQMS - LCD LOCAL.xlsx`.
-- [ ] Map F-COST view model ke template workbook `FCOST - LCD LOCAL.xlsx`.
-- [ ] Implement POST `/api/reports/export-excel`.
-- [ ] Simpan export history di `export_jobs`.
-- [ ] Implement POST `/api/settings/backup`.
-- [ ] Implement POST `/api/settings/restore`.
-- [ ] Buat storage convention untuk imports, exports, dan backups.
-- [ ] Buat portable package target Windows.
-- [ ] Test di Windows bersih tanpa Node.js/database/browser tambahan.
-- [ ] Dokumentasikan cara pakai operator.
+Tujuan: preview dan Excel tidak punya logic hitung berbeda.
 
-## Phase 16 — Final Acceptance
+- [ ] Build report view model FQMS ringkas untuk Slice 0.
+- [ ] Build report view model F-COST ringkas untuk Slice 0.
+- [ ] Implement `GET /api/reports/view-model`.
+- [ ] Render preview dari view model yang sama.
+- [ ] Map FQMS view model ke `templates/excel/FQMS - LCD LOCAL.xlsx`.
+- [ ] Map F-COST view model ke `templates/excel/FCOST - LCD LOCAL.xlsx`.
+- [ ] Implement `POST /api/reports/export-excel`.
+- [ ] Pastikan export menolak jika validation critical masih ada.
+- [ ] Simpan export history jika `export_jobs` sudah tersedia.
+
+Gate Phase 6:
+
+- [ ] Total di preview sama dengan Excel export.
+- [ ] Perbedaan hanya formatting/rounding presentasi.
+- [ ] Excel file bisa dibuka dan angka utama cocok dengan referensi.
+
+## Phase 7 — Minimal UI untuk 5 Halaman Inti
+
+Tujuan: user bisa menjalankan Slice 0 tanpa full CRUD.
+
+- [ ] Buat atau rapikan app layout utama secukupnya.
+- [ ] Buat Month/Scope page atau dashboard control untuk April 2026, LCD, LOCAL.
+- [ ] Buat Import Center untuk sales CSV dan raw service CSV.
+- [ ] Tampilkan import status, row counts, warnings, dan replace status.
+- [ ] Buat Review Anomalies untuk missing mapping/outlier/error rows.
+- [ ] Tambahkan edit minimal dari Review Anomalies untuk unblock import.
+- [ ] Buat Validation Summary dengan filter blocking vs non-blocking.
+- [ ] Buat Report Preview/Export untuk FQMS + F-COST ringkas.
+- [ ] Hindari full `/models`, `/references`, dan `/targets` CRUD sampai Slice 0 lulus.
+
+Gate Phase 7:
+
+- [ ] User dapat menyelesaikan flow dari pilih scope → import → review anomaly → validation → preview/export.
+- [ ] UI menampilkan critical block state dengan jelas.
+- [ ] UI menampilkan replace import behavior dengan jelas.
+
+## Phase 8 — Portable Node Bundle Smoke Test
+
+Tujuan: de-risk zero-install sebelum fitur melebar.
+
+- [ ] Buat packaging baseline dengan portable Node bundle.
+- [ ] Pastikan package membawa app build, runtime portable, `data/`, `storage/`, dan `templates/`.
+- [ ] Jalankan app dari folder portable tanpa install Node manual.
+- [ ] Import sales CSV dan raw service CSV dari package smoke environment.
+- [ ] Jalankan validation.
+- [ ] Buka preview.
+- [ ] Export Excel.
+- [ ] Dokumentasikan batasan packaging yang ditemukan.
+
+Gate Phase 8:
+
+- [ ] Operator flow inti berjalan dari folder portable.
+- [ ] SQLite file dibuat/dibaca di lokasi yang benar.
+- [ ] Template Excel ditemukan dari package.
+
+## Phase 9 — Expand setelah Slice 0 Lulus
+
+Jangan mulai phase ini sebelum gate Slice 0 lulus.
+
+- [ ] Tambahkan IMPORT scope memakai pola LOCAL yang sudah terbukti.
+- [ ] Tambahkan report month lain setelah April 2026 akurat.
+- [ ] Lengkapi FQMS Section A/B/C/D.
+- [ ] Lengkapi F-COST Summary/A/B/C.
+- [ ] Tambahkan full master data CRUD jika edit minimal sudah tidak cukup.
+- [ ] Tambahkan target management lengkap.
+- [ ] Tambahkan backup/restore SQLite.
+- [ ] Tambahkan browser Print to PDF polish dan CSS print.
+- [ ] Uji portable package ulang di Windows bersih.
+
+---
+
+## Final Acceptance Setelah Ekspansi MVP
 
 - [ ] User dapat membuat report month baru.
 - [ ] User dapat mengatur product/manufacturer/report scope.
