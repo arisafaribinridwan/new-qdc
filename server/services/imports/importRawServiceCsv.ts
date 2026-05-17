@@ -9,7 +9,7 @@ import { filterRecordsByFactoryMapping, indexRecords, resolveImportScope, valida
 
 export async function importRawServiceCsv(input: ImportCsvInput): Promise<ImportSummary> {
   const scopeInput = resolveImportScope(input)
-  const parsedCsv = await parseCsv(input.content)
+  const parsedCsv = await parseCsv(input.content, rawServiceRequiredHeaders)
 
   validateRequiredHeaders(parsedCsv.headers, rawServiceRequiredHeaders)
 
@@ -35,7 +35,7 @@ export async function importRawServiceCsv(input: ImportCsvInput): Promise<Import
   }
 
   const filtered = filterRecordsByFactoryMapping(
-    indexRecords(parsedCsv.records),
+    indexRecords(parsedCsv.records, parsedCsv.headerRowNumber + 1),
     'factory',
     activeFactoryMappings.map(mapping => mapping.factoryCode)
   )
