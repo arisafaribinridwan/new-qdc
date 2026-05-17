@@ -13,6 +13,12 @@ node_modules
 logs
 *.log
 
+# Local app data
+/data/*.db
+/data/*.db-*
+/storage/**
+!/storage/.gitkeep
+
 # Misc
 .DS_Store
 .fleet
