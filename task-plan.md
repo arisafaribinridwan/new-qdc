@@ -66,21 +66,21 @@ Gate lulus Slice 0:
 
 Tujuan: membuat persistence minimum untuk membuktikan angka, bukan schema final semua modul.
 
-- [ ] Buat `drizzle.config.ts`.
-- [ ] Buat SQLite client di `server/db/client.ts`.
-- [ ] Buat schema Drizzle minimal untuk report month/scope context.
-- [ ] Buat schema minimal untuk products dan manufacturers/scopes.
-- [ ] Buat schema minimal untuk factory mappings yang dibutuhkan Slice 0.
-- [ ] Buat schema `data_imports` untuk import session/history.
-- [ ] Buat schema `raw_sales_rows`.
-- [ ] Buat schema `raw_service_rows`.
-- [ ] Buat schema output ringkas FQMS.
-- [ ] Buat schema output ringkas F-COST.
-- [ ] Buat schema `validation_runs` dan validation issues.
-- [ ] Buat schema `export_jobs` jika Excel export sudah menyimpan history.
-- [ ] Generate migration awal.
-- [ ] Jalankan migration ke `data/sqlite.db`.
-- [ ] Buat seed minimal untuk April 2026, LCD, LOCAL, dan mapping sample yang dibutuhkan.
+- [x] Buat `drizzle.config.ts`.
+- [x] Buat SQLite client di `server/db/client.ts`.
+- [x] Buat schema Drizzle minimal untuk report month/scope context.
+- [x] Buat schema minimal untuk products dan manufacturers/scopes.
+- [x] Buat schema minimal untuk factory mappings yang dibutuhkan Slice 0.
+- [x] Buat schema `data_imports` untuk import session/history.
+- [x] Buat schema `raw_sales_rows`.
+- [x] Buat schema `raw_service_rows`.
+- [x] Buat schema output ringkas FQMS.
+- [x] Buat schema output ringkas F-COST.
+- [x] Buat schema `validation_runs` dan validation issues.
+- [x] Buat schema `export_jobs` jika Excel export sudah menyimpan history.
+- [x] Generate migration awal.
+- [x] Jalankan migration ke `data/sqlite.db`.
+- [x] Buat seed minimal untuk April 2026, LCD, LOCAL, dan mapping sample yang dibutuhkan.
 
 ## Phase 2 — Repository Layer Minimum
 
