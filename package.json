@@ -10,7 +10,9 @@
     "typecheck": "nuxt typecheck",
     "postinstall": "nuxt prepare",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@nuxt/ui": "^4.7.1",
@@ -24,6 +26,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@nuxt/eslint": "^1.10.0",
     "@types/better-sqlite3": "^7.6.13",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.4.0",
