@@ -100,29 +100,29 @@ Tujuan: menjaga service tidak query Drizzle langsung.
 
 Tujuan: ingestion deterministic dan auditable.
 
-- [ ] Definisikan required headers untuk sales CSV.
-- [ ] Definisikan required headers untuk raw service CSV.
-- [ ] Implement header validation sales CSV.
-- [ ] Implement header validation raw service CSV.
-- [ ] Implement parser sales CSV streaming/Node mode.
-- [ ] Implement parser raw service CSV streaming/Node mode.
-- [ ] Simpan raw sales rows dengan raw JSON jika perlu.
-- [ ] Simpan raw service rows dengan raw JSON jika perlu.
-- [ ] Implement import metadata: filename, row count, accepted count, rejected count, warning count, timestamp.
-- [ ] Implement automatic replace untuk same month + product + scope + import type.
-- [ ] Implement split LOCAL berdasarkan factory mapping.
-- [ ] Implement keydate month validation untuk raw service.
-- [ ] Implement sample outlier reporting untuk row beda bulan.
-- [ ] Implement `POST /api/import/sales`.
-- [ ] Implement `POST /api/import/raw-service`.
-- [ ] Implement `GET /api/import/history`.
+- [x] Definisikan required headers untuk sales CSV.
+- [x] Definisikan required headers untuk raw service CSV.
+- [x] Implement header validation sales CSV.
+- [x] Implement header validation raw service CSV.
+- [x] Implement parser sales CSV streaming/Node mode.
+- [x] Implement parser raw service CSV streaming/Node mode.
+- [x] Simpan raw sales rows dengan raw JSON jika perlu.
+- [x] Simpan raw service rows dengan raw JSON jika perlu.
+- [x] Implement import metadata: filename, row count, accepted count, rejected count, warning count, timestamp.
+- [x] Implement automatic replace untuk same month + product + scope + import type.
+- [x] Implement split LOCAL berdasarkan factory mapping.
+- [x] Implement keydate month validation untuk raw service.
+- [x] Implement sample outlier reporting untuk row beda bulan.
+- [x] Implement `POST /api/import/sales`.
+- [x] Implement `POST /api/import/raw-service`.
+- [x] Implement `GET /api/import/history`.
 
 Gate Phase 3:
 
-- [ ] Missing required header menolak import dengan error jelas.
-- [ ] Extra columns tidak merusak import.
-- [ ] Import ulang file yang sama mengganti raw rows lama, bukan append double.
-- [ ] Import history mencatat replace action.
+- [x] Missing required header menolak import dengan error jelas.
+- [x] Extra columns tidak merusak import.
+- [x] Import ulang file yang sama mengganti raw rows lama, bukan append double.
+- [x] Import history mencatat replace action.
 
 ## Phase 4 — Aggregation Proof of Accuracy
 
