@@ -4,42 +4,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current repository state
 
-This workspace is currently a product/specification workspace, not a scaffolded application. There is no `package.json`, Nuxt app, source tree, test runner, lint config, README, Cursor rules, Copilot instructions, or existing `CLAUDE.md` at the time this file was created.
+This workspace is a Nuxt 4 application plus product/specification workspace for QRCC Data Center. The canonical PRD is `prd.md` (renamed from the former `new-prd.md`). If project memories, older notes, or future assumptions conflict with `prd.md`, follow `prd.md`.
 
 Important files/directories currently present:
 
-- `new-prd.md` — primary source of truth for building QRCC Data Center from scratch. If project memories, older notes, or future assumptions conflict with this PRD, follow this file.
+- `prd.md` — primary source of truth for building QRCC Data Center.
+- `task-plan.md` — implementation checklist, now sequenced around a data-truth-first vertical slice.
 - `raw data april 2026.csv` — sample raw service CSV for April 2026, matching the PRD raw service header.
 - `templates/excel/` — legacy Excel report templates/reference workbooks.
 - `templates/pdf/` — legacy printed report references.
+- `app/` — Nuxt UI application shell and pages.
+- `server/` — target location for Nitro API/backend code; backend implementation is still minimal/absent.
 
 ## Commands
 
-No verified build, lint, dev, or test commands exist yet because the application has not been initialized. Do not invent commands in this repository; after scaffolding the Nuxt project, update this section from the actual `package.json` scripts.
+Use the actual scripts from `package.json`:
 
-Until then, use file reads/searches to inspect the PRD and templates. If you add the app scaffold, include exact commands here for:
+- Start the Nuxt development server: `pnpm dev`
+- Type check: `pnpm typecheck`
+- Lint: `pnpm lint`
+- Auto-fix lint: `pnpm lint:fix`
+- Build: `pnpm build`
+- Preview production build: `pnpm preview`
+- Generate Drizzle migrations: `pnpm db:generate`
+- Run Drizzle migrations: `pnpm db:migrate`
 
-- starting the Nuxt development server
-- type checking
-- linting
-- running all tests
-- running a single test file
-- running Drizzle migrations/seeds
-- building/packaging the portable Windows app
+No test runner is configured yet. Do not invent test commands until a test script exists in `package.json`.
 
 ## Product direction from the PRD
 
 QRCC Data Center is a local-first, single-user web application for the monthly QRCC FQMS and F-COST workflow. It replaces Excel-driven copy/paste, helper sheets, manual formulas, and cross-file checks with CSV import, SQLite storage, automated aggregation, validation, Excel export, and browser Print to PDF.
 
-Final target stack from `new-prd.md`:
+Final target stack from `prd.md`:
 
 - Nuxt 4 full-stack monolith with Vue 3, Nuxt UI 4, and strict TypeScript.
 - SQLite local database as the source of truth, accessed through Drizzle ORM.
 - Zod for server-side validation.
-- `csv-parse` or PapaParse for CSV parsing, preferably streaming/Node mode for large files.
+- `csv-parse` for CSV parsing, preferably streaming/Node mode for large files.
 - ExcelJS for filling `.xlsx` templates.
 - Native browser print for PDF; do not introduce Playwright for PDF export.
 - Final distribution must be portable/zero-install for Windows office PCs: no required Node.js, database server, Playwright browser, or admin install on the target machine.
+- Packaging baseline is a portable Node bundle first; Bun compile or Node SEA should only be considered after the baseline works.
 
 ## Target architecture
 
@@ -56,7 +61,7 @@ Responsibilities:
 - `server/repositories/*.ts`: Drizzle/SQLite CRUD and queries only. Do not calculate PPM, ratios, validation results, report values, or HTTP responses here.
 - `server/reports/**`: transform persisted long-format data into report view models and Excel/print-specific structures. Do not use reports as primary storage.
 
-Target folder structure is documented in PRD section 6. Keep `app/` for Nuxt UI, `server/` for Nitro API/backend, `shared/` for cross-boundary constants/types/validators, `templates/` for report templates, `data/` for `sqlite.db`, and `storage/` for imports/exports/backups.
+Target folder structure is documented in the PRD. Keep `app/` for Nuxt UI, `server/` for Nitro API/backend, `shared/` for cross-boundary constants/types/validators, `templates/` for report templates, `data/` for `sqlite.db`, and `storage/` for imports/exports/backups.
 
 ## Core data and workflow rules
 
@@ -65,27 +70,29 @@ Target folder structure is documented in PRD section 6. Keep `app/` for Nuxt UI,
 - Store normalized data in long format; convert to wide format only for report view models, preview, or Excel export.
 - The main workflow is: choose/create report month, select product/manufacturer scope, import sales CSV, import raw service CSV, store import history/raw rows, aggregate, review/edit anomalies, validate, preview report, export Excel or print to PDF, and back up SQLite.
 - Sales and raw service files can contain mixed LOCAL/IMPORT data. Split by explicit `factory_mappings`; do not hardcode permanent factory/manufacturer assumptions.
-- MVP duplicate import handling should use replace mode for the same report month + import type + product/manufacturer scope unless the implementation deliberately chooses versioned active imports.
+- MVP duplicate import handling uses replace mode for the same report month + import type + product/manufacturer scope.
 - Header validation is required for CSV imports. Extra columns may be ignored or stored as raw JSON, but missing required columns should reject the import.
 - Raw service `keydate` must match the selected report month. Reject if most rows are for a different month; show CHECK with sample rows for small outliers.
-- For claim quantities, the recommended MVP rule is `job_sheet_section = 1`. Cost aggregation may need all cost rows, but this must be verified against manual Excel numbers before final report work.
+- For Slice 0, FQMS claim quantities use `job_sheet_section = 1`.
+- For Slice 0, F-COST aggregates all valid cost rows.
+- Store F-COST amounts in raw rupiah; scaling belongs only in display/export formatting.
 
 ## Reporting and calculation rules
 
 FQMS:
 
-- Product/manufacturer scope starts with LCD and LOCAL/IMPORT, reported separately.
-- MVP sections are A Quality Trend, B Acceptance Ratio, C Detail Model, and D Worst Defect. `Quality Issue and Follow Up` is outside the initial MVP.
+- Product/manufacturer scope starts with LCD LOCAL for Slice 0, then expands to IMPORT after accuracy is proven.
+- Full MVP sections are A Quality Trend, B Acceptance Ratio, C Detail Model, and D Worst Defect. Slice 0 only needs enough FQMS summary output to prove the April 2026 LCD LOCAL numbers.
 - Target monthly PPM is one global value per product + manufacturer + fiscal half, not per model.
 - Section C accumulation runs from each model's launching month to the report month.
 - Accumulated PPM denominator is `accumulated_sales * launching_period`.
-- Total AVG PPM uses total exposure across models, not an average of model PPM values.
+- Total FQMS AVG PPM uses total exposure across models, not an average of model PPM values.
 - If denominator inputs are missing or zero, return CHECK/blank rather than `Infinity`, `NaN`, or misleading values.
 
 F-COST:
 
-- Product/manufacturer scope starts with LCD and LOCAL/IMPORT, reported separately.
-- MVP sections are Summary cards, A Monthly F-Cost, B F-Cost Trend, and C Detail F-Cost & Part Contribution.
+- Product/manufacturer scope starts with LCD LOCAL for Slice 0, then expands to IMPORT after accuracy is proven.
+- Full MVP sections are Summary cards, A Monthly F-Cost, B F-Cost Trend, and C Detail F-Cost & Part Contribution. Slice 0 only needs enough F-COST summary output to prove the April 2026 LCD LOCAL numbers.
 - The old `Achievement` label is replaced with `Cost vs Target`.
 - Target F-COST is one global value per product + manufacturer + fiscal half.
 - LY F-Cost comes from the same month one year earlier, not manual input. If missing, show CHECK or `LY data missing`.
@@ -100,22 +107,34 @@ Fiscal calendar:
 
 ## Validation priorities
 
-The validation engine should produce `OK` or `CHECK`, reason, severity, and links to related review pages. PRD section 15 defines V1–V22; key validations include import presence, required CSV headers, report month consistency, factory/model mapping completeness, duplicate summaries, denominator safety, category standardization, target presence, F-COST item/part breakdown consistency, raw `total_cost` cross-checks, LY F-Cost presence, previous fiscal half availability, outliers, and print readiness.
+The validation engine should produce status, reason, severity, and links to related review pages. For MVP operation, critical/error issues block Excel export; warning/CHECK issues are visible but do not block export.
+
+Slice 0 validation should prioritize import presence, required CSV headers, report month consistency, factory/model mapping completeness, duplicate/re-import safety, denominator safety, FQMS total consistency, F-COST total consistency, and export readiness.
 
 ## UI/API targets
 
-The target UI map includes dashboard, report months, models, reference data, targets, import center, review/entry pages, validation, report preview/export, and SQLite backup/restore.
+The Slice 0 UI is intentionally limited to five pages/areas:
 
-The target API surface includes import endpoints, report month/model/reference CRUD, target CRUD, review endpoints, validation run, report view-model, Excel export, and backup/restore. Keep report preview and Excel export driven by the same report view model.
+1. Month/Scope
+2. Import Center
+3. Review Anomalies
+4. Validation Summary
+5. Report Preview/Export
+
+Avoid full master-data CRUD, full target CRUD, and all report sections until Slice 0 accuracy gates pass. Keep report preview and Excel export driven by the same report view model.
 
 ## Implementation sequence
 
-Follow the PRD roadmap rather than polishing UI first:
+Follow `task-plan.md` and prioritize data truth over UI breadth:
 
-1. Bootstrap Nuxt 4 + Nuxt UI 4 + strict TypeScript, lint/typecheck, app shell, and page map.
-2. Add Drizzle + SQLite schema, migrations, seeds, and repository layer.
-3. Build CSV parser and aggregation proof of accuracy, using April 2026 data to verify against manual Excel/reference outputs.
-4. Build import UI with preview/errors and replace/reprocess mode.
-5. Add master data, targets, review pages, validation, report view models, print preview, Excel export, backup/restore, then packaging.
+1. Verify project hygiene and actual package scripts.
+2. Add minimal Drizzle + SQLite schema, migrations, seeds, and repository layer for April 2026 LCD LOCAL.
+3. Build CSV import pipeline with header validation and automatic replace behavior.
+4. Build aggregation proof of accuracy using April 2026 data and LOCAL templates.
+5. Add minimal validation engine with critical export blocking.
+6. Build report view model, preview, and Excel export from the same data structure.
+7. Build only the five Slice 0 UI pages/areas.
+8. Run portable Node bundle smoke test early.
+9. Expand to IMPORT, full report sections, full CRUD, backup/restore, print CSS, and final packaging only after Slice 0 passes.
 
-The parser/aggregation numbers for April 2026 must be proven accurate before treating final UI/report work as complete.
+The parser/aggregation numbers for April 2026 LCD LOCAL must be proven accurate before treating final UI/report work as complete.

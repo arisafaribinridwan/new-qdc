@@ -70,7 +70,7 @@ Aplikasi tidak boleh menjadikan Excel sebagai database. Excel hanya output/templ
 | CSV parser | csv-parse atau PapaParse | Prefer streaming/Node mode untuk file besar |
 | Excel export | ExcelJS | Mengisi template `.xlsx` |
 | PDF export | Native Browser Print | Report render di browser lalu `window.print()` / Ctrl+P |
-| Packaging | Bun compile / Node SEA / portable Node bundle | Target akhir zip portable berisi exe/bat, data, dan templates |
+| Packaging | Portable Node bundle sebagai baseline awal | Target akhir zip portable berisi exe/bat, runtime portable, data, dan templates. Bun compile/Node SEA hanya dipertimbangkan setelah baseline terbukti. |
 
 Playwright tidak digunakan untuk PDF karena butuh Chromium besar, sering diblokir IT, dan tidak cocok untuk zero-install. PDF dibuat dari browser print bawaan Chrome/Edge dengan CSS print yang ketat.
 
@@ -92,9 +92,32 @@ Playwright tidak digunakan untuk PDF karena butuh Chromium besar, sering dibloki
 
 ---
 
+## 19 · MVP Slice 0 — Accuracy Slice
+
+Sebelum membangun seluruh MVP, project harus melewati satu vertical slice kecil untuk membuktikan akurasi data dan kelayakan workflow end-to-end.
+
+Scope Slice 0:
+
+- Report month: April 2026 (`202604`).
+- Product: LCD.
+- Manufacturer/report scope: LOCAL.
+- Input: sales CSV dan raw service CSV.
+- Output: FQMS ringkas, F-COST ringkas, report preview, dan Excel export memakai template LOCAL.
+- UI awal hanya Month/Scope, Import Center, Review Anomalies, Validation Summary, dan Report Preview/Export.
+- Master data awal memakai seed + edit minimal dari Review Anomalies, bukan full CRUD.
+- Re-import untuk month + product + scope + import type yang sama memakai automatic replace.
+- FQMS claim quantity dihitung dari raw service `job_sheet_section = 1`.
+- F-COST dihitung dari semua cost rows valid.
+- Cost disimpan dalam rupiah asli; scaling hanya untuk tampilan/export.
+- Count/quantity harus exact terhadap referensi April 2026; cost boleh berbeda hanya karena pembulatan presentasi.
+- Critical validation issue memblokir export; warning/CHECK tidak memblokir export.
+- Portable Node bundle smoke test dilakukan lebih awal setelah app shell + SQLite minimal berjalan.
+
+Slice 0 dianggap lulus jika angka FQMS/F-COST April 2026 LCD LOCAL terbukti akurat, preview dan Excel berasal dari view model yang sama, re-import tidak menyebabkan double count, dan app bisa menjalankan smoke flow dari paket portable awal.
+
 ## 20 · Scope MVP
 
-Masuk MVP:
+Masuk MVP lengkap setelah Slice 0:
 
 - Import sales CSV.
 - Import raw service CSV.
@@ -158,7 +181,7 @@ MVP dianggap selesai jika user dapat menyelesaikan satu siklus bulanan penuh tan
 | LY F-COST missing | Status `LY data missing`, bukan manual input palsu |
 | Browser print berantakan | CSS print khusus, test Chrome/Edge, avoid Playwright |
 | SQLite hilang | Backup/restore wajib sejak MVP |
-| Portable packaging gagal | Packaging dikerjakan setelah core stabil dan diuji di Windows bersih |
+| Portable packaging gagal | Portable Node bundle smoke test dikerjakan dini setelah app shell + SQLite minimal berjalan, lalu diuji lagi saat slice end-to-end selesai |
 
 ---
 
