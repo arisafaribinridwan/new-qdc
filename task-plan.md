@@ -52,15 +52,15 @@ Gate lulus Slice 0:
 
 ## Phase 0 — Project Hygiene dan Baseline
 
-- [ ] Pastikan script `pnpm dev` berjalan.
-- [ ] Pastikan `pnpm lint` berjalan.
-- [ ] Pastikan `pnpm lint:fix` berjalan.
-- [ ] Pastikan `pnpm typecheck` berjalan.
-- [ ] Pastikan `pnpm build` berjalan.
-- [ ] Pastikan Nuxt 4, Nuxt UI 4, Vue 3, dan TypeScript strict aktif.
-- [ ] Pastikan Tailwind CSS aktif melalui Nuxt UI/Tailwind v4 import.
-- [ ] Rapikan app shell minimal hanya jika dibutuhkan untuk menjalankan Slice 0.
-- [ ] Update command di `CLAUDE.md` dari script aktual `package.json`.
+- [x] Pastikan script `pnpm dev` berjalan.
+- [x] Pastikan `pnpm lint` berjalan.
+- [x] Pastikan `pnpm lint:fix` berjalan.
+- [x] Pastikan `pnpm typecheck` berjalan.
+- [x] Pastikan `pnpm build` berjalan.
+- [x] Pastikan Nuxt 4, Nuxt UI 4, Vue 3, dan TypeScript strict aktif.
+- [x] Pastikan Tailwind CSS aktif melalui Nuxt UI/Tailwind v4 import.
+- [x] Rapikan app shell minimal hanya jika dibutuhkan untuk menjalankan Slice 0.
+- [x] Update command di `CLAUDE.md` dari script aktual `package.json`.
 
 ## Phase 1 — Minimal SQLite + Drizzle Foundation
 
