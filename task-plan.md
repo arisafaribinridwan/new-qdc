@@ -86,15 +86,15 @@ Tujuan: membuat persistence minimum untuk membuktikan angka, bukan schema final 
 
 Tujuan: menjaga service tidak query Drizzle langsung.
 
-- [ ] Buat repository imports.
-- [ ] Buat repository raw sales rows.
-- [ ] Buat repository raw service rows.
-- [ ] Buat repository scope/month lookup.
-- [ ] Buat repository minimal factory mappings.
-- [ ] Buat repository FQMS summary output.
-- [ ] Buat repository F-COST summary output.
-- [ ] Buat repository validation run/results.
-- [ ] Pastikan repository hanya CRUD/query, tanpa business calculation.
+- [x] Buat repository imports.
+- [x] Buat repository raw sales rows.
+- [x] Buat repository raw service rows.
+- [x] Buat repository scope/month lookup.
+- [x] Buat repository minimal factory mappings.
+- [x] Buat repository FQMS summary output.
+- [x] Buat repository F-COST summary output.
+- [x] Buat repository validation run/results.
+- [x] Pastikan repository hanya CRUD/query, tanpa business calculation.
 
 ## Phase 3 — CSV Import Pipeline dan Replace Mode
 
