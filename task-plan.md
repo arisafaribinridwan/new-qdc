@@ -128,13 +128,25 @@ Gate Phase 3:
 
 Tujuan: membuktikan angka sebelum UI/report melebar.
 
-- [ ] Implement sales aggregation untuk denominator/summary Slice 0.
-- [ ] Implement FQMS claim quantity dari raw service `job_sheet_section = 1`.
-- [ ] Implement defect/non-defect ringkas yang dibutuhkan FQMS summary awal.
-- [ ] Implement F-COST aggregation dari semua valid cost rows.
-- [ ] Simpan F-COST amount dalam rupiah asli.
-- [ ] Cross-check `total_cost` vs parts/labor/transportation cost jika field tersedia.
-- [ ] Buat proof script/service untuk April 2026 LCD LOCAL.
+Catatan status untuk lanjut kerja di PC lain:
+
+- Parser/raw monthly proof sudah berjalan untuk April 2026 dan Maret 2026 LCD LOCAL.
+- CSV dengan preamble sebelum header sudah ditemukan pada file Maret 2026 (`Monthly Report Final Recipe`, `Periode`, `Dibuat`). Parser harus mempertahankan kemampuan mencari header wajib, bukan mengasumsikan header selalu baris pertama.
+- Mapping factory LCD LOCAL yang dipakai sample adalah `SEID`, `SKW`, `MOKA`, dan `MTC`. Jangan kembali ke mapping hanya `SEID`, karena itu membuat raw rows undercount.
+- April 2026 proof dari sample: sales qty `56,057`; claim qty `2,585`; defect `1,830`; non-defect `170`; unclassified/N/A claim `585`; F-COST total `1,268,117,579`; selisih `total_cost` vs item cost `0`.
+- Maret 2026 proof dari sample: sales qty `58,858`; claim qty `2,043`; defect `1,468`; non-defect `147`; unclassified/N/A claim `428`; F-COST total `984,681,281`; selisih `total_cost` vs item cost `0`.
+- F-COST Maret cocok dengan `templates/excel/FCOST - LCD LOCAL.xlsx`: template menyimpan amount dalam ribuan (`984681.280999...`), sama dengan `984,681,281` rupiah.
+- FQMS template memakai angka akumulasi per model, bukan monthly raw summary langsung. Phase 4 FQMS tidak bisa ditutup hanya dengan satu bulan raw service + satu bulan sales.
+- Untuk menyelesaikan proof FQMS exact, siapkan data akumulasi: sales historis per model dari launching month sampai report month, claim historis per model untuk `DEFECT`/`NON_DEFECT`, mapping raw model ke model report, launching month per model, dan target monthly PPM per fiscal half.
+- Alternatif cepat: siapkan trusted CSV/workbook FQMS accumulated reference berisi `report_month`, `report_model`, `launching_month`, `accumulated_sales`, `defect_qty`, `non_defect_qty`, `total_claim_qty`, dan `target_ppm`.
+
+- [x] Implement sales aggregation untuk denominator/summary Slice 0.
+- [x] Implement FQMS claim quantity dari raw service `job_sheet_section = 1`.
+- [x] Implement defect/non-defect ringkas yang dibutuhkan FQMS summary awal.
+- [x] Implement F-COST aggregation dari semua valid cost rows.
+- [x] Simpan F-COST amount dalam rupiah asli.
+- [x] Cross-check `total_cost` vs parts/labor/transportation cost jika field tersedia.
+- [x] Buat proof script/service untuk April 2026 LCD LOCAL.
 - [ ] Bandingkan FQMS quantity/count terhadap referensi Excel/PDF.
 - [ ] Bandingkan F-COST amount terhadap referensi Excel/PDF.
 - [ ] Catat mismatch sebagai blocking issue sebelum UI polish.
@@ -143,7 +155,7 @@ Gate Phase 4:
 
 - [ ] FQMS count/quantity exact.
 - [ ] F-COST base sum exact sebelum formatting.
-- [ ] Tidak ada `Infinity`, `NaN`, atau angka misleading saat denominator kosong/zero.
+- [x] Tidak ada `Infinity`, `NaN`, atau angka misleading saat denominator kosong/zero.
 
 ## Phase 5 — Validation Engine Minimum
 

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { InferInsertModel } from 'drizzle-orm'
 
 import { fqmsSummaries } from '../db/schema'
@@ -29,7 +29,8 @@ export function createFqmsSummariesRepository(db?: RepositoryDb) {
             defectCount: values.defectCount,
             nonDefectCount: values.nonDefectCount,
             status: values.status,
-            summaryJson: values.summaryJson
+            summaryJson: values.summaryJson,
+            computedAt: sql`CURRENT_TIMESTAMP`
           }
         })
         .returning()

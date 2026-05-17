@@ -21,6 +21,7 @@ export type CsvRecord = Record<string, string | undefined>
 export type ParsedCsv = {
   headers: string[]
   records: CsvRecord[]
+  headerRowNumber: number
 }
 
 export type ImportWarning = {
