@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { InferInsertModel } from 'drizzle-orm'
 
 import { fcostSummaries } from '../db/schema'
@@ -29,7 +29,8 @@ export function createFcostSummariesRepository(db?: RepositoryDb) {
             transportationCostRupiah: values.transportationCostRupiah,
             totalCostRupiah: values.totalCostRupiah,
             status: values.status,
-            summaryJson: values.summaryJson
+            summaryJson: values.summaryJson,
+            computedAt: sql`CURRENT_TIMESTAMP`
           }
         })
         .returning()

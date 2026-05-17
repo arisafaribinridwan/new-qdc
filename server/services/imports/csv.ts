@@ -4,26 +4,23 @@ import { Readable } from 'node:stream'
 import { ImportValidationError } from './errors'
 import type { CsvRecord, ParsedCsv } from './types'
 
-export async function parseCsv(content: Buffer): Promise<ParsedCsv> {
-  const headers: string[] = []
-  const records: CsvRecord[] = []
+type CsvCell = string | undefined
+type CsvRow = CsvCell[]
 
+export async function parseCsv(content: Buffer, requiredHeaders: readonly string[] = []): Promise<ParsedCsv> {
+  const rows: CsvRow[] = []
   const parser = Readable
     .from([content])
     .pipe(parse({
       bom: true,
-      columns(header: string[]) {
-        headers.push(...header.map(column => column.trim()))
-        return headers
-      },
       relax_column_count: true,
       skip_empty_lines: true,
       trim: false
     }))
 
   try {
-    for await (const record of parser) {
-      records.push(record as CsvRecord)
+    for await (const row of parser) {
+      rows.push(row as CsvRow)
     }
   }
   catch (error) {
@@ -32,9 +29,46 @@ export async function parseCsv(content: Buffer): Promise<ParsedCsv> {
     })
   }
 
-  if (headers.length === 0) {
+  if (rows.length === 0) {
     throw new ImportValidationError('CSV file must include a header row.')
   }
 
-  return { headers, records }
+  const headerRowIndex = findHeaderRowIndex(rows, requiredHeaders)
+  const headerRow = rows[headerRowIndex]
+
+  if (!headerRow) {
+    throw new ImportValidationError('CSV file must include a header row.')
+  }
+
+  const headers = headerRow.map(column => (column ?? '').trim())
+  const records = rows.slice(headerRowIndex + 1).map(row => toRecord(headers, row))
+
+  return {
+    headers,
+    records,
+    headerRowNumber: headerRowIndex + 1
+  }
+}
+
+function findHeaderRowIndex(rows: CsvRow[], requiredHeaders: readonly string[]) {
+  if (requiredHeaders.length === 0) {
+    return 0
+  }
+
+  const foundIndex = rows.findIndex((row) => {
+    const headerSet = new Set(row.map(column => (column ?? '').trim()))
+    return requiredHeaders.every(header => headerSet.has(header))
+  })
+
+  return foundIndex >= 0 ? foundIndex : 0
+}
+
+function toRecord(headers: string[], row: CsvRow): CsvRecord {
+  return headers.reduce<CsvRecord>((record, header, index) => {
+    if (header) {
+      record[header] = row[index]
+    }
+
+    return record
+  }, {})
 }

@@ -9,7 +9,7 @@ import { filterRecordsByFactoryMapping, indexRecords, resolveImportScope, valida
 
 export async function importSalesCsv(input: ImportCsvInput): Promise<ImportSummary> {
   const scopeInput = resolveImportScope(input)
-  const parsedCsv = await parseCsv(input.content)
+  const parsedCsv = await parseCsv(input.content, salesRequiredHeaders)
 
   validateRequiredHeaders(parsedCsv.headers, salesRequiredHeaders)
 
@@ -35,7 +35,7 @@ export async function importSalesCsv(input: ImportCsvInput): Promise<ImportSumma
   }
 
   const filtered = filterRecordsByFactoryMapping(
-    indexRecords(parsedCsv.records),
+    indexRecords(parsedCsv.records, parsedCsv.headerRowNumber + 1),
     'Factory',
     activeFactoryMappings.map(mapping => mapping.factoryCode)
   )
