@@ -1,7 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm'
 import type { InferInsertModel } from 'drizzle-orm'
 
-import { dataImports } from '../db/schema'
+import { dataImports, manufacturers, products, reportMonths, reportScopes } from '../db/schema'
 import { resolveDb } from './types'
 import type { RepositoryDb } from './types'
 
@@ -25,6 +25,24 @@ export function createImportsRepository(db?: RepositoryDb) {
         .select()
         .from(dataImports)
         .where(eq(dataImports.reportScopeId, reportScopeId))
+        .orderBy(desc(dataImports.importedAt), desc(dataImports.id))
+        .all()
+    },
+
+    listWithScope() {
+      return database
+        .select({
+          import: dataImports,
+          scope: reportScopes,
+          reportMonth: reportMonths,
+          product: products,
+          manufacturer: manufacturers
+        })
+        .from(dataImports)
+        .innerJoin(reportScopes, eq(dataImports.reportScopeId, reportScopes.id))
+        .innerJoin(reportMonths, eq(reportScopes.reportMonthId, reportMonths.id))
+        .innerJoin(products, eq(reportScopes.productId, products.id))
+        .innerJoin(manufacturers, eq(reportScopes.manufacturerId, manufacturers.id))
         .orderBy(desc(dataImports.importedAt), desc(dataImports.id))
         .all()
     },
