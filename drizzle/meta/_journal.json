@@ -8,6 +8,20 @@
       "when": 1779018528354,
       "tag": "0000_clammy_grim_reaper",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1779085611000,
+      "tag": "0001_seed_lcd_local_factories",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1779086260000,
+      "tag": "0002_seed_march_2026_scope",
+      "breakpoints": true
     }
   ]
 }

@@ -41,9 +41,9 @@ export function validateRequiredHeaders(headers: string[], requiredHeaders: read
   }
 }
 
-export function indexRecords(records: CsvRecord[]): IndexedCsvRecord[] {
+export function indexRecords(records: CsvRecord[], firstDataRowNumber = 2): IndexedCsvRecord[] {
   return records.map((record, index) => ({
-    rowNumber: index + 2,
+    rowNumber: index + firstDataRowNumber,
     record
   }))
 }

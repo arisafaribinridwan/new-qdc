@@ -6,6 +6,7 @@ import { resolveDb } from './types'
 import type { RepositoryDb } from './types'
 
 type NewRawSalesRow = InferInsertModel<typeof rawSalesRows>
+const insertChunkSize = 100
 
 export function createRawSalesRowsRepository(db?: RepositoryDb) {
   const database = resolveDb(db)
@@ -16,7 +17,8 @@ export function createRawSalesRowsRepository(db?: RepositoryDb) {
         return []
       }
 
-      return database.insert(rawSalesRows).values(rows).returning().all()
+      return chunkRows(rows, insertChunkSize)
+        .flatMap(chunk => database.insert(rawSalesRows).values(chunk).returning().all())
     },
 
     findByImportId(importId: number) {
@@ -60,3 +62,13 @@ export function createRawSalesRowsRepository(db?: RepositoryDb) {
 }
 
 export type RawSalesRowsRepository = ReturnType<typeof createRawSalesRowsRepository>
+
+function chunkRows<T>(rows: T[], chunkSize: number) {
+  const chunks: T[][] = []
+
+  for (let index = 0; index < rows.length; index += chunkSize) {
+    chunks.push(rows.slice(index, index + chunkSize))
+  }
+
+  return chunks
+}
