@@ -1,75 +1,88 @@
-# Nuxt Minimal Starter
+# QRCC Data Center
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Local-first Nuxt 4 application for the QRCC monthly FQMS and F-COST workflow. The product replaces Excel copy/paste and manual cross-file checks with CSV import, SQLite storage, automated aggregation, validation, report preview, Excel export, and browser Print to PDF.
 
-## Setup
+The canonical product source of truth is [`prd.md`](prd.md). The active implementation checklist is [`task-plan.md`](task-plan.md).
 
-Make sure to install dependencies:
+## Current Accuracy Slice
+
+Slice 0 is focused on proving April 2026 LCD LOCAL numbers before expanding UI/report breadth.
+
+Important Phase 4 proof facts:
+
+- Monthly parser/raw proof already covers April 2026 and March 2026 LCD LOCAL.
+- Raw service CSV parsing must keep searching for the required header row because some files have preamble lines before the header.
+- LOCAL factory mapping for the sample is `SEID`, `SKW`, `MOKA`, and `MTC`.
+- Sales CSV uses `Model` as the original/source model and `Report Model` as the reporting/aggregation model. Required header matching is case-insensitive, so `report model` and `Report model` are accepted.
+- FQMS Section C uses accumulated per-model values, not only one monthly raw summary.
+- Accumulated FQMS PPM denominator is `accumulated_sales * launching_period`.
+- Total FQMS AVG PPM uses total exposure across models, not an average of model PPM values.
+
+April 2026 LCD LOCAL accumulated FQMS proof currently uses:
+
+- Accumulated claims from 14 active monitoring workbooks under `D:\ARISAFARI\Works\FQMS - Sharp Confidential\02_LCD SEID\RAW DATA\Monitoring\01_active`.
+- Accumulated sales from `C:\Users\GAY0700622\Documents\sales akumulasi into april 2026.csv`.
+- Repeatable proof script: [`scripts/proof-fqms-april.mjs`](scripts/proof-fqms-april.mjs).
+- Generated proof CSV: `storage/proofs/fqms-accumulated-lcd-local-2026-04.csv`.
+
+Current proof totals:
+
+| Metric | Value |
+|---|---:|
+| Accumulated sales | 821,326 |
+| Defect qty | 4,061 |
+| Non-defect qty | 1,025 |
+| Total claim qty | 5,086 |
+| Exposure | 11,931,633 |
+| Defect PPM | 340.355759 |
+| Non-defect PPM | 85.906095 |
+| Total PPM | 426.261854 |
+
+`storage/proofs/` may be ignored by git. Regenerate the proof with:
 
 ```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
+node scripts/proof-fqms-april.mjs
 ```
 
-## Development Server
-
-Start the development server on `http://localhost:3000`:
+The script also accepts optional arguments:
 
 ```bash
-# npm
-npm run dev
+node scripts/proof-fqms-april.mjs <monitoring-dir> <sales-csv-path> <output-csv-path>
+```
 
-# pnpm
+## Commands
+
+Use the scripts from `package.json`:
+
+```bash
 pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
+pnpm lint
+pnpm lint:fix
+pnpm typecheck
 pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
 pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
+pnpm db:generate
+pnpm db:migrate
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+No test runner is configured yet. Do not invent test commands until a test script exists in `package.json`.
+
+## Stack
+
+- Nuxt 4 full-stack monolith
+- Vue 3 and Nuxt UI 4
+- Strict TypeScript
+- SQLite with Drizzle ORM
+- Zod validation
+- `csv-parse` for CSV import
+- ExcelJS for `.xlsx` export
+- Native browser print for PDF
+
+## Working Rules
+
+- Excel is output/template only, never the database.
+- SQLite is the source of truth.
+- Store raw imported rows so every summary/report number is traceable.
+- Keep backend boundaries: API controller -> service -> repository -> SQLite.
+- Critical validation issues block export; warning/CHECK issues remain visible but do not block export.
+- Do not treat UI/report work as final until Slice 0 parser and aggregation numbers are proven accurate.
