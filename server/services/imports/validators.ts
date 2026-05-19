@@ -33,12 +33,16 @@ export function validateMonthKey(monthKey: string) {
 }
 
 export function validateRequiredHeaders(headers: string[], requiredHeaders: readonly string[]) {
-  const headerSet = new Set(headers)
-  const missingHeaders = requiredHeaders.filter(header => !headerSet.has(header))
+  const headerSet = new Set(headers.map(normalizeHeaderName))
+  const missingHeaders = requiredHeaders.filter(header => !headerSet.has(normalizeHeaderName(header)))
 
   if (missingHeaders.length > 0) {
     throw new ImportValidationError('CSV file is missing required headers.', { missingHeaders })
   }
+}
+
+function normalizeHeaderName(value: string) {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase()
 }
 
 export function indexRecords(records: CsvRecord[], firstDataRowNumber = 2): IndexedCsvRecord[] {
