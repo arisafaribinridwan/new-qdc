@@ -72,10 +72,17 @@ Target folder structure is documented in the PRD. Keep `app/` for Nuxt UI, `serv
 - Store normalized data in long format; convert to wide format only for report view models, preview, or Excel export.
 - The main workflow is: choose/create report month, select product/manufacturer scope, import sales CSV, import raw service CSV, store import history/raw rows, aggregate, review/edit anomalies, validate, preview report, export Excel or print to PDF, and back up SQLite.
 - Sales and raw service files can contain mixed LOCAL/IMPORT data. Split by explicit `factory_mappings`; do not hardcode permanent factory/manufacturer assumptions.
-- Sales CSV must include `Report Model`. `Model` is the source/original sales model for audit, while `Report Model` is the reporting model used for grouping and aggregation. Header matching is case-insensitive for required headers, so `report model` and `Report model` are accepted as `Report Model`.
-- MVP duplicate import handling uses replace mode for the same report month + import type + product/manufacturer scope.
+- Sales CSV must include `Report Model` and `Sales Month`. `Model` is the source/original sales model for audit, `Report Model` is the reporting model used for grouping and aggregation, and `Sales Month` is the period source in `YYYY-MM` format. Header matching is case-insensitive for required headers, so `report model` and `Report model` are accepted as `Report Model`.
+- Sales duplicate import handling uses replace mode for the same report month + import type + product/manufacturer scope.
+- Raw service Phase 3 replace mode is only a baseline parser/aggregation proof behavior. The target operational flow is staging compare + upsert per notification/line, with manual override protection.
+- Import Center should show last imported month/status per product/scope/import type, including row counts, warnings, anomaly count, exported status, and whether raw service has manual reviews.
 - Header validation is required for CSV imports. Extra columns may be ignored or stored as raw JSON, but missing required columns should reject the import.
 - Raw service `keydate` must match the selected report month. Reject if most rows are for a different month; show CHECK with sample rows for small outliers.
+- Raw service `notification` is unique for a case, but one notification can have multiple lines. Use a line key/fingerprint such as `notification + job_sheet_section + part_code + line_no_dalam_notification` until a more stable line identifier exists.
+- Manual raw service review is line-level and initially limited to `symptom` and `action`. Import ulang must not overwrite these overrides silently.
+- Raw service `defect_category` and `defect` are derived from effective action via master action (`Action`, `Category`, `Defect`), not edited manually.
+- Changed line count for an existing raw service notification is CHECK/CONFLICT and should flow to Review Anomalies.
+- Exported reports should eventually be stored as snapshots/history: current data can keep changing, but a finalized export should not change silently.
 - For Slice 0, FQMS claim quantities use `job_sheet_section = 1`.
 - For Slice 0, F-COST aggregates all valid cost rows.
 - Store F-COST amounts in raw rupiah; scaling belongs only in display/export formatting.
@@ -136,7 +143,7 @@ Follow `task-plan.md` and prioritize data truth over UI breadth:
 
 1. Verify project hygiene and actual package scripts.
 2. Add minimal Drizzle + SQLite schema, migrations, seeds, and repository layer for April 2026 LCD LOCAL.
-3. Build CSV import pipeline with header validation and automatic replace behavior.
+3. Build CSV import pipeline with header validation; sales keeps automatic replace behavior, raw service moves toward staging compare + upsert per notification/line.
 4. Build aggregation proof of accuracy using April 2026 data and LOCAL templates.
 5. Add minimal validation engine with critical export blocking.
 6. Build report view model, preview, and Excel export from the same data structure.

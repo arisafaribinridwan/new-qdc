@@ -54,7 +54,9 @@ Aplikasi tidak boleh menjadikan Excel sebagai database. Excel hanya output/templ
 6. **Explicit grouping** — Aturan penggabungan model dan mapping factory/manufacturer disimpan di tabel reference, bukan hardcode tersembunyi.
 7. **Portable zero-install** — Aplikasi harus dapat dijalankan tanpa hak admin dan tanpa instalasi dependency eksternal di PC kantor.
 8. **Report parity** — Angka report harus bisa dibuktikan sama dengan hitungan manual Excel/reference report sebelum UI dipercantik.
-9. **Sales report model grouping** — Sales CSV memakai `Model` sebagai model asli/source untuk audit dan `Report Model` sebagai model laporan untuk grouping/agregasi. Required header matching harus toleran terhadap kapitalisasi seperti `report model` atau `Report model`.
+9. **Sales report model grouping and period** — Sales CSV memakai `Model` sebagai model asli/source untuk audit, `Report Model` sebagai model laporan untuk grouping/agregasi, dan `Sales Month` sebagai periode data sales format `YYYY-MM`. Required header matching harus toleran terhadap kapitalisasi seperti `report model` atau `Report model`.
+10. **Import idempotency** — Import ulang tidak boleh membuat double count. Sales memakai replace per month/scope/import type, sedangkan raw service harus bergerak ke staging compare + upsert per notification/line agar revisi kasus bisa dilacak.
+11. **Raw review override protection** — Koreksi manual raw service hanya untuk baris tertentu, terutama `symptom` dan `action`; koreksi tersebut tidak boleh tertimpa diam-diam oleh import ulang.
 
 ---
 
@@ -93,6 +95,50 @@ Playwright tidak digunakan untuk PDF karena butuh Chromium besar, sering dibloki
 
 ---
 
+## 8 · Import Safety, Re-Import, dan Raw Review Flow
+
+Import Center harus menampilkan status data per month/product/scope agar operator tahu bulan terakhir yang sudah memiliki data. Minimal status yang harus terlihat:
+
+- Last imported sales month.
+- Last imported raw service month.
+- Row count, warning count, dan anomaly/check count per import type.
+- Apakah report month/scope sudah pernah diexport.
+- Apakah raw service memiliki manual review/override.
+
+Informasi status bulan adalah warning gate awal, bukan satu-satunya mekanisme anti-duplikasi. Semua upload tetap masuk staging/preview sebelum commit jika data untuk month/scope yang sama sudah ada.
+
+Sales re-import target:
+
+- Sales CSV wajib memiliki `Sales Month` format `YYYY-MM`.
+- Sistem menolak atau memberi critical validation jika mayoritas `Sales Month` tidak cocok dengan report month yang dipilih.
+- Untuk same report month + product + scope + import type, sales memakai replace mode agar import ulang file koreksi tidak double count.
+- `Model` disimpan sebagai source/original model; `Report Model` dipakai untuk grouping/agregasi.
+
+Raw service re-import target:
+
+- Raw service tidak memakai replace penuh sebagai perilaku operasional utama.
+- Raw service import harus staging compare terhadap existing data, lalu upsert per notification + line.
+- `notification` adalah case key unik untuk satu kasus, tetapi satu notification bisa memiliki banyak line.
+- Line key target memakai kombinasi stabil seperti `notification + job_sheet_section + part_code + line_no_dalam_notification`; jika nanti ada kolom line identifier yang lebih stabil, gunakan kolom tersebut menggantikan line number.
+- Perubahan jumlah line pada notification yang sudah ada harus menjadi CHECK/CONFLICT karena original data secara normal tidak berubah 100%.
+- Import ulang harus membedakan `NEW_NOTIFICATION`, `DUPLICATE_UNCHANGED`, `SOURCE_CHANGED`, `LINE_COUNT_CHANGED`, `HAS_MANUAL_OVERRIDE`, dan `OVERRIDE_CONFLICT`.
+- Default action: new rows insert, unchanged rows skip, changed source rows update source jika tidak conflict, manual override tetap menang jika ada.
+
+Raw service manual review target:
+
+- Manual edit berlaku di level line, bukan seluruh notification.
+- Kolom manual yang boleh dioverride awalnya hanya `symptom` dan `action`.
+- `defect_category` dan `defect` tidak diedit manual langsung; keduanya dihitung ulang dari effective action memakai master action.
+- Effective data untuk report: override value jika ada, selain itu source value dari import terakhir.
+- Master action minimal berisi `Action`, `Category`, dan `Defect`, seperti referensi `.doc/dummy master action.csv`.
+- Contoh: jika line dioverride menjadi `VERIFIED_OK`, master action menentukan `Category = N/A` dan `Defect = N/A`, sehingga line tersebut tidak dihitung sebagai defect claim FQMS.
+
+Export snapshot target:
+
+- Current/effective raw data boleh berubah setelah sebuah report diexport.
+- Export yang sudah final harus tersimpan sebagai snapshot/report output history agar angka report lama tidak berubah diam-diam.
+- Revisi raw April setelah export April boleh mempengaruhi akumulasi report bulan berikutnya, tetapi tidak mengubah snapshot export April.
+
 ## 19 · MVP Slice 0 — Accuracy Slice
 
 Sebelum membangun seluruh MVP, project harus melewati satu vertical slice kecil untuk membuktikan akurasi data dan kelayakan workflow end-to-end.
@@ -106,12 +152,13 @@ Scope Slice 0:
 - Output: FQMS ringkas, F-COST ringkas, report preview, dan Excel export memakai template LOCAL.
 - UI awal hanya Month/Scope, Import Center, Review Anomalies, Validation Summary, dan Report Preview/Export.
 - Master data awal memakai seed + edit minimal dari Review Anomalies, bukan full CRUD.
-- Re-import untuk month + product + scope + import type yang sama memakai automatic replace.
+- Re-import sales untuk month + product + scope + import type yang sama memakai automatic replace.
+- Raw service Phase 3 replace mode adalah baseline sementara untuk membuktikan parser/aggregation; target operasionalnya adalah staging compare + upsert per notification/line dengan manual override protection sebelum workflow raw review dipakai nyata.
 - FQMS claim quantity dihitung dari raw service `job_sheet_section = 1`.
 - F-COST dihitung dari semua cost rows valid.
 - Cost disimpan dalam rupiah asli; scaling hanya untuk tampilan/export.
 - Count/quantity harus exact terhadap referensi April 2026; cost boleh berbeda hanya karena pembulatan presentasi.
-- Sales CSV Slice 0 wajib memiliki kolom `Report Model`; model consolidation seperti `2T-C32HD1400I` ke `2T-C32HD1500I` dikontrol dari kolom tersebut, bukan hardcode di parser.
+- Sales CSV Slice 0 wajib memiliki kolom `Report Model` dan `Sales Month`; model consolidation seperti `2T-C32HD1400I` ke `2T-C32HD1500I` dikontrol dari `Report Model`, bukan hardcode di parser.
 - Critical validation issue memblokir export; warning/CHECK tidak memblokir export.
 - Portable Node bundle smoke test dilakukan lebih awal setelah app shell + SQLite minimal berjalan.
 
@@ -182,7 +229,9 @@ MVP dianggap selesai jika user dapat menyelesaikan satu siklus bulanan penuh tan
 |---|---|
 | Kolom CSV berubah | Header validation, optional raw JSON, error message jelas |
 | File CSV besar membuat UI hang | Parsing di backend service, gunakan streaming parser |
-| Data double-count karena re-import | Replace mode atau active import version |
+| Data double-count karena re-import | Sales replace per month/scope/import type; raw service staging compare + upsert per notification/line |
+| Manual raw review tertimpa import ulang | Simpan override line-level untuk `symptom`/`action`; effective report value memakai override sebelum source import |
+| Jumlah line raw service berubah pada notification existing | Tandai CHECK/CONFLICT dan arahkan ke Review Anomalies, jangan auto-commit diam-diam |
 | Local/import tercampur | Factory mapping eksplisit dan validation unmapped factory |
 | Mapping defect/non-defect tertukar | Definisikan `defect_category` sebagai status dan `defect` sebagai category detail |
 | `job_sheet_section` membuat qty/cost salah | Lock rule melalui parser proof-of-accuracy sebelum UI final |
@@ -208,12 +257,15 @@ MVP dianggap selesai jika user dapat menyelesaikan satu siklus bulanan penuh tan
 | LOCAL/IMPORT | Manufacturer/report scope yang harus dipisah |
 | Raw Service CSV | CSV service/repair/claim dari sistem |
 | Sales CSV | CSV sales amount dan sales qty per model |
+| Sales Month | Kolom periode sales format `YYYY-MM` yang wajib cocok dengan report month |
 | Defect Status | Status besar dari raw `defect_category`: DEFECT/NON_DEFECT/N/A |
 | Defect Code | Kategori detail dari raw `defect`: PANEL/MAIN_UNIT/USER/etc |
+| Master Action | Reference mapping `Action -> Category + Defect` untuk menentukan effective defect classification |
 | Long-format | Data disimpan baris per bulan/model/category |
 | Wide-format | Data disusun kolom per bulan untuk report |
 | View Model | Struktur data siap render report/export |
-| Override | Koreksi manual terhadap hasil import/agregasi |
+| Override | Koreksi manual terhadap hasil import/agregasi; untuk raw service awalnya line-level pada `symptom` dan `action` |
+| Export Snapshot | Salinan hasil report saat export agar report final lama tidak berubah saat current data direvisi |
 
 ---
 
@@ -234,3 +286,8 @@ MVP dianggap selesai jika user dapat menyelesaikan satu siklus bulanan penuh tan
 13. Angka parser April 2026 harus dibuktikan akurat sebelum UI/report final dianggap selesai.
 14. Phase 4 FQMS accumulated proof April 2026 LCD LOCAL memakai claim akumulasi dari workbook monitoring, sales akumulasi dari trusted CSV, dan denominator `accumulated_sales × launching_period`.
 15. Sales aggregation memakai `Report Model` sebagai model laporan; `Model` tetap disimpan sebagai source model untuk traceability.
+16. Sales CSV wajib memiliki `Sales Month` agar sistem bisa membuktikan periode data sales dan mencegah upload bulan yang salah.
+17. Raw service target operasional memakai staging compare + upsert per notification/line, bukan replace penuh sebagai default.
+18. Manual raw service review berlaku per line untuk `symptom` dan `action`; override tidak boleh tertimpa import ulang.
+19. `defect_category` dan `defect` raw service dihitung dari effective action memakai master action, bukan diedit manual langsung.
+20. Import Center harus menampilkan status bulan terakhir dan kelengkapan data per month/product/scope/import type.
