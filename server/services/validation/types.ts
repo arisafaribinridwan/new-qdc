@@ -40,6 +40,7 @@ export type ValidationRunSummary = {
     currentMonthRows: number
     duplicateLineKeys: number
     manualOverrideCount: number
+    stagingCompare: Record<RawServiceStagingStatusCode, number>
   }
   aggregation: {
     salesQuantity: number | null
@@ -47,3 +48,11 @@ export type ValidationRunSummary = {
     fcostTotalRupiah: number | null
   }
 }
+
+export type RawServiceStagingStatusCode =
+  | 'NEW_NOTIFICATION'
+  | 'DUPLICATE_UNCHANGED'
+  | 'SOURCE_CHANGED'
+  | 'LINE_COUNT_CHANGED'
+  | 'HAS_MANUAL_OVERRIDE'
+  | 'OVERRIDE_CONFLICT'
