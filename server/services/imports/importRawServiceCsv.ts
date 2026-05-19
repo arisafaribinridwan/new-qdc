@@ -1,5 +1,5 @@
 import { getDb } from '../../db/client'
-import { createFactoryMappingsRepository, createImportsRepository, createRawServiceRowsRepository, createScopesRepository } from '../../repositories'
+import { createFactoryMappingsRepository, createImportsRepository, createMasterActionsRepository, createRawServiceRowsRepository, createScopesRepository } from '../../repositories'
 import { importTypes, rawServiceRequiredHeaders } from './constants'
 import { parseCsv } from './csv'
 import { ImportNotFoundError, ImportValidationError } from './errors'
@@ -46,6 +46,7 @@ export async function importRawServiceCsv(input: ImportCsvInput): Promise<Import
 
   return database.transaction((tx) => {
     const importsRepository = createImportsRepository(tx)
+    const masterActionsRepository = createMasterActionsRepository(tx)
     const rawServiceRowsRepository = createRawServiceRowsRepository(tx)
     const previousImport = importsRepository.findLatestByScopeAndType(scopeResult.scope.id, importTypes.rawService)
     const createdImport = importsRepository.create({
@@ -68,12 +69,27 @@ export async function importRawServiceCsv(input: ImportCsvInput): Promise<Import
       rawServiceRowsRepository.deleteByImportId(previousImport.id)
     }
 
-    rawServiceRowsRepository.insertMany(filtered.accepted.map(item => normalizeRawServiceRow(
-      item.record,
-      item.rowNumber,
-      createdImport.id,
-      scopeResult.scope.id
-    )))
+    const lineCountsByNotification = new Map<string, number>()
+    const actionClassifications = new Map(
+      masterActionsRepository
+        .listActive()
+        .map(action => [action.action, { category: action.category, defect: action.defect }])
+    )
+
+    rawServiceRowsRepository.insertMany(filtered.accepted.map((item) => {
+      const notification = item.record.notification?.trim().toUpperCase() || `ROW_${item.rowNumber}`
+      const lineNumberWithinNotification = (lineCountsByNotification.get(notification) ?? 0) + 1
+      lineCountsByNotification.set(notification, lineNumberWithinNotification)
+
+      return normalizeRawServiceRow(
+        item.record,
+        item.rowNumber,
+        createdImport.id,
+        scopeResult.scope.id,
+        lineNumberWithinNotification,
+        actionClassifications
+      )
+    }))
 
     const completedImport = importsRepository.update(createdImport.id, {
       status: 'completed',
