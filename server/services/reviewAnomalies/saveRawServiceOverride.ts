@@ -11,7 +11,7 @@ import {
 import { normalizeCode } from '../imports/normalizers'
 import { resolveImportScope } from '../imports/validators'
 import { ReviewAnomaliesError, ReviewAnomaliesNotFoundError } from './errors'
-import { toReviewAnomalyItem } from './getReviewAnomalies'
+import { getReviewLineKey, getReviewNotification, toReviewAnomalyItem } from './getReviewAnomalies'
 import type { RawServiceOverrideInput, RawServiceOverrideResult } from './types'
 
 const overrideInputSchema = z.object({
@@ -42,9 +42,10 @@ export function saveRawServiceOverride(input: RawServiceOverrideInput = {}): Raw
 
   const row = createRawServiceRowsRepository(database)
     .findByReportScopeId(scopeResult.scope.id)
-    .find(item => item.lineKey === parsed.data.lineKey)
+    .find(item => getReviewLineKey(item) === parsed.data.lineKey)
+  const notification = row ? getReviewNotification(row) : null
 
-  if (!row || !row.lineKey || !row.notification) {
+  if (!row || !notification) {
     throw new ReviewAnomaliesNotFoundError('Raw service line was not found for the selected scope.', {
       ...scopeInput,
       lineKey: parsed.data.lineKey
@@ -53,8 +54,8 @@ export function saveRawServiceOverride(input: RawServiceOverrideInput = {}): Raw
 
   const override = createRawServiceLineOverridesRepository(database).upsert({
     reportScopeId: scopeResult.scope.id,
-    notification: row.notification,
-    lineKey: row.lineKey,
+    notification,
+    lineKey: getReviewLineKey(row),
     overrideSymptom: normalizeNullableText(parsed.data.overrideSymptom),
     overrideAction: normalizeNullableCode(parsed.data.overrideAction),
     note: normalizeNullableText(parsed.data.note)
