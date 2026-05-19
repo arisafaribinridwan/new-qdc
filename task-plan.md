@@ -42,8 +42,8 @@ Gate lulus Slice 0:
 
 - [ ] Import sales dan raw service berhasil dengan header validation.
 - [ ] Re-import tidak menyebabkan double count.
-- [ ] FQMS quantity/count exact dengan referensi April 2026.
-- [ ] F-COST base amount exact sebelum formatting/rounding.
+- [x] FQMS quantity/count exact dengan referensi April 2026.
+- [x] F-COST base amount exact sebelum formatting/rounding.
 - [ ] Validation membedakan blocking critical issue vs non-blocking warning/CHECK.
 - [ ] Preview dan Excel export membaca view model yang sama.
 - [ ] Portable Node bundle smoke test dapat menjalankan flow inti.
@@ -147,6 +147,7 @@ Catatan status untuk lanjut kerja di PC lain:
 - Hasil proof FQMS April 2026 LCD LOCAL dari data akumulasi: accumulated sales `821,326`; defect `4,061`; non-defect `1,025`; total claim `5,086`; exposure `11,931,633`; defect PPM `340.355759`; non-defect PPM `85.906095`; total PPM `426.261854`.
 - Untuk PC lain, jalankan ulang proof dengan `node scripts/proof-fqms-april.mjs <monitoring-dir> <sales-csv-path> <output-csv-path>` jika path lokal berbeda.
 - `storage/proofs/` bisa ignored oleh git; jangan menganggap output CSV selalu ikut repo. Script proof adalah sumber regenerasi utama.
+- Final cross-check Phase 4 sudah dikonfirmasi cocok semua terhadap referensi FQMS/F-COST April 2026 LCD LOCAL. Tidak ada mismatch blocking yang tersisa untuk Phase 4.
 
 - [x] Implement sales aggregation untuk denominator/summary Slice 0.
 - [x] Implement FQMS claim quantity dari raw service `job_sheet_section = 1`.
@@ -156,14 +157,14 @@ Catatan status untuk lanjut kerja di PC lain:
 - [x] Cross-check `total_cost` vs parts/labor/transportation cost jika field tersedia.
 - [x] Buat proof script/service untuk April 2026 LCD LOCAL.
 - [x] Buat proof FQMS akumulasi April 2026 dari sales akumulasi dan workbook monitoring per model.
-- [ ] Bandingkan FQMS quantity/count terhadap referensi Excel/PDF.
-- [ ] Bandingkan F-COST amount terhadap referensi Excel/PDF.
-- [ ] Catat mismatch sebagai blocking issue sebelum UI polish.
+- [x] Bandingkan FQMS quantity/count terhadap referensi Excel/PDF.
+- [x] Bandingkan F-COST amount terhadap referensi Excel/PDF.
+- [x] Catat mismatch sebagai blocking issue sebelum UI polish.
 
 Gate Phase 4:
 
-- [ ] FQMS count/quantity exact.
-- [ ] F-COST base sum exact sebelum formatting.
+- [x] FQMS count/quantity exact.
+- [x] F-COST base sum exact sebelum formatting.
 - [x] Tidak ada `Infinity`, `NaN`, atau angka misleading saat denominator kosong/zero.
 
 ## Phase 5 — Validation Engine Minimum
