@@ -29,6 +29,7 @@ export type ImportWarning = {
   reason: string
   rows?: number[]
   count?: number
+  relatedData?: unknown
 }
 
 export type ImportSummary = {

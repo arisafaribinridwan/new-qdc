@@ -14,6 +14,7 @@ import { importTypes } from '../imports/constants'
 import { resolveImportScope } from '../imports/validators'
 import { ValidationNotFoundError } from './errors'
 import type {
+  RawServiceStagingStatusCode,
   ValidationIssueInput,
   ValidationIssueSeverity,
   ValidationRunResult,
@@ -23,9 +24,18 @@ import type {
 
 type RawSalesRow = ReturnType<ReturnType<typeof createRawSalesRowsRepository>['findByReportScopeId']>[number]
 type RawServiceRow = ReturnType<ReturnType<typeof createRawServiceRowsRepository>['findByReportScopeId']>[number]
+type RawServiceLineOverride = ReturnType<ReturnType<typeof createRawServiceLineOverridesRepository>['listByReportScopeId']>[number]
 type DataImport = ReturnType<ReturnType<typeof createImportsRepository>['findLatestByScopeAndType']>
 
 const claimJobSheetSection = 1
+const rawServiceStagingStatusCodes: RawServiceStagingStatusCode[] = [
+  'NEW_NOTIFICATION',
+  'DUPLICATE_UNCHANGED',
+  'SOURCE_CHANGED',
+  'LINE_COUNT_CHANGED',
+  'HAS_MANUAL_OVERRIDE',
+  'OVERRIDE_CONFLICT'
+]
 
 export function runScopeValidation(input: ValidationScopeInput = {}): ValidationRunResult {
   const scopeInput = resolveImportScope(input)
@@ -63,7 +73,8 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
       scopeInput.monthKey
     )
     const activeFactoryCodes = new Set(activeMappings.map(mapping => mapping.factoryCode))
-    const manualOverrideCount = overridesRepository.countByReportScopeId(reportScopeId)
+    const manualOverrides = overridesRepository.listByReportScopeId(reportScopeId)
+    const rawServiceStagingCompare = summarizeRawServiceStagingCompare(rawServiceImport)
     const fqms = fqmsRepository.findByReportScopeId(reportScopeId)
     const fcost = fcostRepository.findByReportScopeId(reportScopeId)
     const issues: ValidationIssueInput[] = []
@@ -73,7 +84,9 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
     issues.push(...validateHeaderResult(rawServiceImport, 'raw_service'))
     issues.push(...validateReportMonthConsistency(salesRows, serviceRows, scopeInput.monthKey))
     issues.push(...validateMappingCompleteness(currentSalesRows, currentServiceRows, activeFactoryCodes))
-    issues.push(...validateReimportSafety(salesImport, rawServiceImport, currentServiceRows, manualOverrideCount))
+    issues.push(...validateReimportSafety(salesImport, rawServiceImport, currentServiceRows))
+    issues.push(...validateRawServiceStagingCompare(rawServiceStagingCompare))
+    issues.push(...validateRawServiceOverrideContinuity(currentServiceRows, manualOverrides))
     issues.push(...validateDenominator(fqms))
     issues.push(...validateFqmsTotal(fqms, currentServiceRows))
     issues.push(...validateFcostTotal(fcost, currentServiceRows))
@@ -91,7 +104,8 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
       rawService: {
         currentMonthRows: currentServiceRows.length,
         duplicateLineKeys: countDuplicateLineKeys(currentServiceRows),
-        manualOverrideCount
+        manualOverrideCount: manualOverrides.length,
+        stagingCompare: rawServiceStagingCompare.counts
       },
       aggregation: {
         salesQuantity: fqms?.salesQuantity ?? null,
@@ -266,8 +280,7 @@ function validateMappingCompleteness(
 function validateReimportSafety(
   salesImport: DataImport,
   rawServiceImport: DataImport,
-  serviceRows: RawServiceRow[],
-  manualOverrideCount: number
+  serviceRows: RawServiceRow[]
 ): ValidationIssueInput[] {
   const issues: ValidationIssueInput[] = []
   const duplicateLineKeys = countDuplicateLineKeys(serviceRows)
@@ -294,13 +307,73 @@ function validateReimportSafety(
     })
   }
 
-  if (manualOverrideCount > 0) {
+  return issues
+}
+
+function validateRawServiceStagingCompare(compare: RawServiceStagingCompareSummary): ValidationIssueInput[] {
+  const issues: ValidationIssueInput[] = []
+
+  if (compare.counts.NEW_NOTIFICATION > 0) {
+    issues.push(rawServiceCompareIssue(
+      'RAW_SERVICE_NEW_NOTIFICATION',
+      'check',
+      'Raw service re-import contains new notifications that were not present in the previous import.',
+      compare
+    ))
+  }
+
+  if (compare.counts.SOURCE_CHANGED > 0) {
+    issues.push(rawServiceCompareIssue(
+      'RAW_SERVICE_SOURCE_CHANGED',
+      'warning',
+      'Raw service re-import contains existing notification lines whose source row changed.',
+      compare
+    ))
+  }
+
+  if (compare.counts.LINE_COUNT_CHANGED > 0) {
+    issues.push(rawServiceCompareIssue(
+      'RAW_SERVICE_LINE_COUNT_CHANGED',
+      'check',
+      'Raw service re-import changed the line count for existing notifications.',
+      compare
+    ))
+  }
+
+  if (compare.counts.OVERRIDE_CONFLICT > 0) {
+    issues.push(rawServiceCompareIssue(
+      'RAW_SERVICE_OVERRIDE_CONFLICT',
+      'warning',
+      'Raw service re-import changed source symptom or action on lines that have manual overrides.',
+      compare
+    ))
+  }
+
+  return issues
+}
+
+function validateRawServiceOverrideContinuity(serviceRows: RawServiceRow[], manualOverrides: RawServiceLineOverride[]): ValidationIssueInput[] {
+  if (manualOverrides.length === 0) {
+    return []
+  }
+
+  const currentLineKeys = new Set(serviceRows.map(row => row.lineKey).filter((lineKey): lineKey is string => Boolean(lineKey)))
+  const staleOverrides = manualOverrides.filter(override => !currentLineKeys.has(override.lineKey))
+  const issues: ValidationIssueInput[] = [{
+    code: 'RAW_SERVICE_HAS_MANUAL_OVERRIDE',
+    severity: 'check',
+    reason: 'Raw service line-level manual overrides exist and remain preserved outside source imports.',
+    relatedPage: '/review-anomalies',
+    relatedData: { manualOverrideCount: manualOverrides.length, overrides: sampleOverrides(manualOverrides) }
+  }]
+
+  if (staleOverrides.length > 0) {
     issues.push({
-      code: 'RAW_SERVICE_HAS_MANUAL_OVERRIDE',
-      severity: 'check',
-      reason: 'Raw service line-level manual overrides exist and must be reviewed before re-import.',
+      code: 'RAW_SERVICE_OVERRIDE_LINE_MISSING',
+      severity: 'warning',
+      reason: 'Some manual overrides no longer match a current raw service line key after re-import.',
       relatedPage: '/review-anomalies',
-      relatedData: { manualOverrideCount }
+      relatedData: { count: staleOverrides.length, overrides: sampleOverrides(staleOverrides) }
     })
   }
 
@@ -328,6 +401,87 @@ function validateDenominator(fqms: ReturnType<ReturnType<typeof createFqmsSummar
   }
 
   return []
+}
+
+type RawServiceStagingCompareSummary = {
+  counts: Record<RawServiceStagingStatusCode, number>
+  items: RawServiceStagingItem[]
+}
+
+type RawServiceStagingItem = {
+  code: RawServiceStagingStatusCode
+  reason?: string
+  count: number
+  relatedData?: unknown
+}
+
+function summarizeRawServiceStagingCompare(rawServiceImport: DataImport): RawServiceStagingCompareSummary {
+  const counts = createEmptyRawServiceStagingCounts()
+  const items: RawServiceStagingItem[] = []
+
+  if (!rawServiceImport) {
+    return { counts, items }
+  }
+
+  for (const item of parseJsonArray(rawServiceImport.warningJson)) {
+    if (!isRawServiceStagingItem(item)) {
+      continue
+    }
+
+    const count = typeof item.count === 'number' ? item.count : 0
+    counts[item.code] += count
+    items.push({ ...item, count })
+  }
+
+  return { counts, items }
+}
+
+function createEmptyRawServiceStagingCounts(): Record<RawServiceStagingStatusCode, number> {
+  return rawServiceStagingStatusCodes.reduce<Record<RawServiceStagingStatusCode, number>>((counts, code) => {
+    counts[code] = 0
+    return counts
+  }, {
+    NEW_NOTIFICATION: 0,
+    DUPLICATE_UNCHANGED: 0,
+    SOURCE_CHANGED: 0,
+    LINE_COUNT_CHANGED: 0,
+    HAS_MANUAL_OVERRIDE: 0,
+    OVERRIDE_CONFLICT: 0
+  })
+}
+
+function isRawServiceStagingItem(value: unknown): value is RawServiceStagingItem {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const item = value as { code?: unknown, count?: unknown, reason?: unknown, relatedData?: unknown, rows?: unknown }
+
+  return typeof item.code === 'string'
+    && isRawServiceStagingStatusCode(item.code)
+    && (item.count === undefined || typeof item.count === 'number')
+}
+
+function isRawServiceStagingStatusCode(code: string): code is RawServiceStagingStatusCode {
+  return rawServiceStagingStatusCodes.includes(code as RawServiceStagingStatusCode)
+}
+
+function rawServiceCompareIssue(
+  code: string,
+  severity: ValidationIssueSeverity,
+  reason: string,
+  compare: RawServiceStagingCompareSummary
+): ValidationIssueInput {
+  return {
+    code,
+    severity,
+    reason,
+    relatedPage: '/review-anomalies',
+    relatedData: {
+      counts: compare.counts,
+      items: compare.items
+    }
+  }
 }
 
 function validateFqmsTotal(
@@ -479,4 +633,12 @@ function sampleRows(rows: Array<{ id: number, rowNumber: number }>) {
     count: rows.length,
     rows: rows.slice(0, 10).map(row => ({ id: row.id, rowNumber: row.rowNumber }))
   }
+}
+
+function sampleOverrides(overrides: RawServiceLineOverride[]) {
+  return overrides.slice(0, 10).map(override => ({
+    id: override.id,
+    notification: override.notification,
+    lineKey: override.lineKey
+  }))
 }
