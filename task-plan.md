@@ -182,24 +182,24 @@ Gate Phase 4:
 
 Tujuan: validasi menjadi gate operasional, bukan checklist abstrak.
 
-- [ ] Implement import presence validation.
-- [ ] Implement header validation result persistence.
-- [ ] Implement report month consistency validation.
+- [x] Implement import presence validation.
+- [x] Implement header validation result persistence.
+- [x] Implement report month consistency validation.
 - [x] Implement sales `Sales Month` consistency validation.
 - [x] Implement import status lookup per month/product/scope/import type.
-- [ ] Implement factory/model mapping completeness untuk Slice 0.
-- [ ] Implement duplicate/re-import safety validation.
+- [x] Implement factory/model mapping completeness untuk Slice 0.
+- [x] Implement duplicate/re-import safety validation.
 - [ ] Implement raw service staging compare status: `NEW_NOTIFICATION`, `DUPLICATE_UNCHANGED`, `SOURCE_CHANGED`, `LINE_COUNT_CHANGED`, `HAS_MANUAL_OVERRIDE`, `OVERRIDE_CONFLICT`.
 - [x] Implement raw service line key/fingerprint: `notification + job_sheet_section + part_code + line_no_dalam_notification` sebagai baseline.
 - [ ] Treat changed line count for an existing notification as CHECK/CONFLICT.
 - [ ] Ensure raw import ulang tidak menimpa manual override `symptom`/`action`.
-- [ ] Implement denominator safety validation.
-- [ ] Implement FQMS total consistency validation.
-- [ ] Implement F-COST total consistency validation.
-- [ ] Implement export readiness validation.
-- [ ] Implement severity: critical/error/warning.
-- [ ] Implement `POST /api/validation/run`.
-- [ ] Simpan validation run summary JSON.
+- [x] Implement denominator safety validation.
+- [x] Implement FQMS total consistency validation.
+- [x] Implement F-COST total consistency validation.
+- [x] Implement export readiness validation.
+- [x] Implement severity: critical/error/warning.
+- [x] Implement `POST /api/validation/run`.
+- [x] Simpan validation run summary JSON.
 
 Gate Phase 5:
 
