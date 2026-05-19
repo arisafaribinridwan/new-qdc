@@ -15,6 +15,25 @@ export type ReviewAnomalyItem = {
   rowNumber: number
   notification: string | null
   lineKey: string
+  source: {
+    rowNumber: number
+    notification: string | null
+    lineKey: string
+    keydate: string
+    factoryCode: string | null
+    modelCode: string | null
+    modelName: string | null
+    jobSheetSection: number | null
+    symptomCode: string | null
+    symptomName: string | null
+    action: string | null
+    partCode: string | null
+    partName: string | null
+    serialNumber: string | null
+    branch: string | null
+    warranty: string | null
+    totalCost: number
+  }
   keydate: string
   factoryCode: string | null
   modelCode: string | null

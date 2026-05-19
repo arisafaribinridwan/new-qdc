@@ -155,6 +155,25 @@ type ReviewAnomalyItem = {
   rowNumber: number
   notification: string | null
   lineKey: string
+  source: {
+    rowNumber: number
+    notification: string | null
+    lineKey: string
+    keydate: string
+    factoryCode: string | null
+    modelCode: string | null
+    modelName: string | null
+    jobSheetSection: number | null
+    symptomCode: string | null
+    symptomName: string | null
+    action: string | null
+    partCode: string | null
+    partName: string | null
+    serialNumber: string | null
+    branch: string | null
+    warranty: string | null
+    totalCost: number
+  }
   keydate: string
   factoryCode: string | null
   modelCode: string | null
@@ -441,7 +460,7 @@ async function reprocess(showToast = true) {
 
 async function runValidation() {
   actionError.value = null
-  activeAction.value = 'override'
+  activeAction.value = 'validation'
 
   try {
     validationResult.value = await $fetch<ValidationRunResult>('/api/validation/run', {
@@ -495,7 +514,7 @@ async function exportExcel() {
 
 async function saveOverride(item: ReviewAnomalyItem) {
   actionError.value = null
-  activeAction.value = 'validation'
+  activeAction.value = 'override'
 
   try {
     const draft = overrideDrafts.value[item.lineKey] ?? {
@@ -654,6 +673,35 @@ function getExportFlowDetail() {
 
 function issueCodeLabel(code: string) {
   return code.replace(/_/g, ' ')
+}
+
+function sourceFieldValue(value: number | string | null | undefined) {
+  if (typeof value === 'number') {
+    return formatNumber(value)
+  }
+
+  return value && value.trim().length > 0 ? value : '-'
+}
+
+function reviewSourceFields(item: ReviewAnomalyItem) {
+  return [
+    { label: 'CSV row', value: item.source.rowNumber },
+    { label: 'Notification', value: item.source.notification },
+    { label: 'Line key', value: item.source.lineKey },
+    { label: 'Keydate', value: item.source.keydate },
+    { label: 'Factory', value: item.source.factoryCode },
+    { label: 'Model', value: item.source.modelCode },
+    { label: 'Model name', value: item.source.modelName },
+    { label: 'Job sheet', value: item.source.jobSheetSection },
+    { label: 'Symptom code', value: item.source.symptomCode },
+    { label: 'Source symptom', value: item.source.symptomName },
+    { label: 'Source action', value: item.source.action },
+    { label: 'Part', value: [item.source.partCode, item.source.partName].filter(Boolean).join(' / ') || null },
+    { label: 'Serial', value: item.source.serialNumber },
+    { label: 'Branch', value: item.source.branch },
+    { label: 'Warranty', value: item.source.warranty },
+    { label: 'Total cost', value: item.source.totalCost }
+  ]
 }
 </script>
 
@@ -1092,10 +1140,8 @@ function issueCodeLabel(code: string) {
                   </UBadge>
                 </div>
                 <div>
-                  <p class="truncate text-sm font-medium">{{ item.notification ?? item.lineKey }}</p>
-                  <p class="mt-1 truncate text-xs text-muted">
-                    {{ item.keydate }} / {{ item.factoryCode ?? 'NO_FACTORY' }} / {{ item.modelCode ?? 'NO_MODEL' }}
-                  </p>
+                  <p class="break-words text-sm font-medium">{{ item.notification ?? item.lineKey }}</p>
+                  <p class="mt-1 break-words text-xs text-muted">{{ item.lineKey }}</p>
                 </div>
               </div>
 
@@ -1114,6 +1160,17 @@ function issueCodeLabel(code: string) {
                 </div>
               </dl>
             </div>
+
+            <dl class="mt-4 grid gap-x-4 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <div
+                v-for="field in reviewSourceFields(item)"
+                :key="field.label"
+                class="min-w-0"
+              >
+                <dt class="text-xs text-muted">{{ field.label }}</dt>
+                <dd class="mt-1 break-words font-medium">{{ sourceFieldValue(field.value) }}</dd>
+              </div>
+            </dl>
 
             <div class="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
               <UInput
