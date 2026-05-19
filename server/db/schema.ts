@@ -76,6 +76,18 @@ export const dataImports = sqliteTable('data_imports', {
   index('data_imports_scope_type_idx').on(table.reportScopeId, table.importType)
 ])
 
+export const masterActions = sqliteTable('master_actions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  action: text('action').notNull().unique(),
+  category: text('category').notNull(),
+  defect: text('defect').notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, table => [
+  index('master_actions_action_idx').on(table.action)
+])
+
 export const rawSalesRows = sqliteTable('raw_sales_rows', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   importId: integer('import_id').notNull().references(() => dataImports.id, { onDelete: 'cascade' }),
@@ -98,6 +110,9 @@ export const rawServiceRows = sqliteTable('raw_service_rows', {
   importId: integer('import_id').notNull().references(() => dataImports.id, { onDelete: 'cascade' }),
   reportScopeId: integer('report_scope_id').notNull().references(() => reportScopes.id, { onDelete: 'cascade' }),
   rowNumber: integer('row_number').notNull(),
+  notification: text('notification'),
+  lineKey: text('line_key'),
+  rowHash: text('row_hash'),
   keydate: text('keydate').notNull(),
   factoryCode: text('factory_code'),
   modelCode: text('model_code'),
@@ -105,6 +120,9 @@ export const rawServiceRows = sqliteTable('raw_service_rows', {
   jobSheetSection: integer('job_sheet_section'),
   symptomCode: text('symptom_code'),
   symptomName: text('symptom_name'),
+  action: text('action'),
+  sourceDefectCategory: text('source_defect_category'),
+  sourceDefect: text('source_defect'),
   partsCost: integer('parts_cost').notNull().default(0),
   laborCost: integer('labor_cost').notNull().default(0),
   transportationCost: integer('transportation_cost').notNull().default(0),
@@ -113,7 +131,24 @@ export const rawServiceRows = sqliteTable('raw_service_rows', {
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`)
 }, table => [
   index('raw_service_rows_import_idx').on(table.importId),
-  index('raw_service_rows_scope_keydate_idx').on(table.reportScopeId, table.keydate)
+  index('raw_service_rows_scope_keydate_idx').on(table.reportScopeId, table.keydate),
+  index('raw_service_rows_scope_notification_idx').on(table.reportScopeId, table.notification),
+  index('raw_service_rows_scope_line_key_idx').on(table.reportScopeId, table.lineKey)
+])
+
+export const rawServiceLineOverrides = sqliteTable('raw_service_line_overrides', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  reportScopeId: integer('report_scope_id').notNull().references(() => reportScopes.id, { onDelete: 'cascade' }),
+  notification: text('notification').notNull(),
+  lineKey: text('line_key').notNull(),
+  overrideSymptom: text('override_symptom'),
+  overrideAction: text('override_action'),
+  note: text('note'),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, table => [
+  uniqueIndex('raw_service_line_overrides_scope_line_unique').on(table.reportScopeId, table.lineKey),
+  index('raw_service_line_overrides_scope_notification_idx').on(table.reportScopeId, table.notification)
 ])
 
 export const fqmsSummaries = sqliteTable('fqms_summaries', {

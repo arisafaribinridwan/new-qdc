@@ -14,6 +14,7 @@ Important Phase 4 proof facts:
 - Raw service CSV parsing must keep searching for the required header row because some files have preamble lines before the header.
 - LOCAL factory mapping for the sample is `SEID`, `SKW`, `MOKA`, and `MTC`.
 - Sales CSV uses `Model` as the original/source model and `Report Model` as the reporting/aggregation model. Required header matching is case-insensitive, so `report model` and `Report model` are accepted.
+- Sales CSV also requires `Sales Month` in `YYYY-MM` format so the file period can be validated against the selected report month.
 - FQMS Section C uses accumulated per-model values, not only one monthly raw summary.
 - Accumulated FQMS PPM denominator is `accumulated_sales * launching_period`.
 - Total FQMS AVG PPM uses total exposure across models, not an average of model PPM values.
@@ -83,6 +84,11 @@ No test runner is configured yet. Do not invent test commands until a test scrip
 - Excel is output/template only, never the database.
 - SQLite is the source of truth.
 - Store raw imported rows so every summary/report number is traceable.
+- Import Center should show the last imported month/status per product/scope/import type.
+- Sales re-import uses replace mode per report month/product/scope/import type.
+- Raw service operational re-import should use staging compare + upsert per notification/line, not blind append or full replace.
+- Raw service manual review is line-level for `symptom` and `action`; import ulang must not silently overwrite those overrides.
+- Raw service `defect_category` and `defect` are derived from effective action through master action mapping.
 - Keep backend boundaries: API controller -> service -> repository -> SQLite.
 - Critical validation issues block export; warning/CHECK issues remain visible but do not block export.
 - Do not treat UI/report work as final until Slice 0 parser and aggregation numbers are proven accurate.
