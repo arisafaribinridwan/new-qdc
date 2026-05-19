@@ -16,6 +16,8 @@ export function stringifyRawRow(record: CsvRecord) {
 
 export function normalizeSalesRow(record: CsvRecord, rowNumber: number, importId: number, reportScopeId: number, salesMonth: string): SalesRowInsert {
   const quantity = parseRequiredInteger(record['Sales (Qty)'], 'Sales (Qty)', rowNumber)
+  const sourceModel = parseRequiredText(record.Model, 'Model', rowNumber)
+  const reportModel = parseRequiredText(record['Report Model'], 'Report Model', rowNumber)
 
   return {
     importId,
@@ -23,8 +25,8 @@ export function normalizeSalesRow(record: CsvRecord, rowNumber: number, importId
     rowNumber,
     salesMonth,
     factoryCode: normalizeText(record.Factory),
-    modelCode: null,
-    modelName: normalizeText(record.Model),
+    modelCode: sourceModel,
+    modelName: reportModel,
     quantity,
     rawJson: stringifyRawRow(record)
   }
@@ -64,6 +66,16 @@ function parseRequiredInteger(value: string | undefined, field: string, rowNumbe
   }
 
   return parsed
+}
+
+function parseRequiredText(value: string | undefined, field: string, rowNumber: number) {
+  const normalized = normalizeText(value)
+
+  if (normalized === null) {
+    throw new ImportValidationError(`CSV row ${rowNumber} is missing required field ${field}.`, { rowNumber, field })
+  }
+
+  return normalized
 }
 
 function parseOptionalInteger(value: string | undefined, field: string, rowNumber: number) {

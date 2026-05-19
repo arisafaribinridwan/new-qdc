@@ -1,6 +1,6 @@
 # Task Plan Implementasi — QRCC Data Center
 
-> **Versi**: 2.0 · **Terakhir diperbarui**: 2026-05-17
+> **Versi**: 2.1 · **Terakhir diperbarui**: 2026-05-19
 >
 > Checklist ini memakai pendekatan **data-truth-first vertical slice**. Milestone pertama bukan jumlah halaman, tetapi bukti bahwa workflow April 2026 LCD LOCAL menghasilkan angka FQMS/F-COST yang akurat, auditable, dan bisa diexport.
 
@@ -133,12 +133,20 @@ Catatan status untuk lanjut kerja di PC lain:
 - Parser/raw monthly proof sudah berjalan untuk April 2026 dan Maret 2026 LCD LOCAL.
 - CSV dengan preamble sebelum header sudah ditemukan pada file Maret 2026 (`Monthly Report Final Recipe`, `Periode`, `Dibuat`). Parser harus mempertahankan kemampuan mencari header wajib, bukan mengasumsikan header selalu baris pertama.
 - Mapping factory LCD LOCAL yang dipakai sample adalah `SEID`, `SKW`, `MOKA`, dan `MTC`. Jangan kembali ke mapping hanya `SEID`, karena itu membuat raw rows undercount.
+- Sales CSV bulanan sekarang memakai kolom `Report Model` untuk model laporan/agregasi. Kolom `Model` tetap model asli dari sales system untuk audit. Contoh: `2TC32HD1400I` digabung ke `2TC32HD1500I` lewat `Report Model`.
+- Required header matching untuk CSV dibuat case-insensitive, sehingga `report model` dan `Report model` diterima sebagai canonical `Report Model`.
 - April 2026 proof dari sample: sales qty `56,057`; claim qty `2,585`; defect `1,830`; non-defect `170`; unclassified/N/A claim `585`; F-COST total `1,268,117,579`; selisih `total_cost` vs item cost `0`.
 - Maret 2026 proof dari sample: sales qty `58,858`; claim qty `2,043`; defect `1,468`; non-defect `147`; unclassified/N/A claim `428`; F-COST total `984,681,281`; selisih `total_cost` vs item cost `0`.
 - F-COST Maret cocok dengan `templates/excel/FCOST - LCD LOCAL.xlsx`: template menyimpan amount dalam ribuan (`984681.280999...`), sama dengan `984,681,281` rupiah.
 - FQMS template memakai angka akumulasi per model, bukan monthly raw summary langsung. Phase 4 FQMS tidak bisa ditutup hanya dengan satu bulan raw service + satu bulan sales.
 - Untuk menyelesaikan proof FQMS exact, siapkan data akumulasi: sales historis per model dari launching month sampai report month, claim historis per model untuk `DEFECT`/`NON_DEFECT`, mapping raw model ke model report, launching month per model, dan target monthly PPM per fiscal half.
 - Alternatif cepat: siapkan trusted CSV/workbook FQMS accumulated reference berisi `report_month`, `report_model`, `launching_month`, `accumulated_sales`, `defect_qty`, `non_defect_qty`, `total_claim_qty`, dan `target_ppm`.
+- Data sales akumulasi hingga April 2026 sudah tersedia dari `C:\Users\GAY0700622\Documents\sales akumulasi into april 2026.csv`.
+- Data claim akumulasi April 2026 diambil dari 14 workbook monitoring aktif di `D:\ARISAFARI\Works\FQMS - Sharp Confidential\02_LCD SEID\RAW DATA\Monitoring\01_active`.
+- Script proof FQMS akumulasi dibuat di `scripts/proof-fqms-april.mjs` dan menghasilkan `storage/proofs/fqms-accumulated-lcd-local-2026-04.csv`.
+- Hasil proof FQMS April 2026 LCD LOCAL dari data akumulasi: accumulated sales `821,326`; defect `4,061`; non-defect `1,025`; total claim `5,086`; exposure `11,931,633`; defect PPM `340.355759`; non-defect PPM `85.906095`; total PPM `426.261854`.
+- Untuk PC lain, jalankan ulang proof dengan `node scripts/proof-fqms-april.mjs <monitoring-dir> <sales-csv-path> <output-csv-path>` jika path lokal berbeda.
+- `storage/proofs/` bisa ignored oleh git; jangan menganggap output CSV selalu ikut repo. Script proof adalah sumber regenerasi utama.
 
 - [x] Implement sales aggregation untuk denominator/summary Slice 0.
 - [x] Implement FQMS claim quantity dari raw service `job_sheet_section = 1`.
@@ -147,6 +155,7 @@ Catatan status untuk lanjut kerja di PC lain:
 - [x] Simpan F-COST amount dalam rupiah asli.
 - [x] Cross-check `total_cost` vs parts/labor/transportation cost jika field tersedia.
 - [x] Buat proof script/service untuk April 2026 LCD LOCAL.
+- [x] Buat proof FQMS akumulasi April 2026 dari sales akumulasi dan workbook monitoring per model.
 - [ ] Bandingkan FQMS quantity/count terhadap referensi Excel/PDF.
 - [ ] Bandingkan F-COST amount terhadap referensi Excel/PDF.
 - [ ] Catat mismatch sebagai blocking issue sebelum UI polish.

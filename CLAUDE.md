@@ -11,6 +11,8 @@ Important files/directories currently present:
 - `prd.md` — primary source of truth for building QRCC Data Center.
 - `task-plan.md` — implementation checklist, now sequenced around a data-truth-first vertical slice.
 - `raw data april 2026.csv` — sample raw service CSV for April 2026, matching the PRD raw service header.
+- `scripts/proof-fqms-april.mjs` — repeatable Phase 4 proof script for April 2026 LCD LOCAL accumulated FQMS.
+- `storage/proofs/fqms-accumulated-lcd-local-2026-04.csv` — generated proof output for accumulated FQMS; this path may be ignored by git and can be regenerated.
 - `templates/excel/` — legacy Excel report templates/reference workbooks.
 - `templates/pdf/` — legacy printed report references.
 - `app/` — Nuxt UI application shell and pages.
@@ -70,6 +72,7 @@ Target folder structure is documented in the PRD. Keep `app/` for Nuxt UI, `serv
 - Store normalized data in long format; convert to wide format only for report view models, preview, or Excel export.
 - The main workflow is: choose/create report month, select product/manufacturer scope, import sales CSV, import raw service CSV, store import history/raw rows, aggregate, review/edit anomalies, validate, preview report, export Excel or print to PDF, and back up SQLite.
 - Sales and raw service files can contain mixed LOCAL/IMPORT data. Split by explicit `factory_mappings`; do not hardcode permanent factory/manufacturer assumptions.
+- Sales CSV must include `Report Model`. `Model` is the source/original sales model for audit, while `Report Model` is the reporting model used for grouping and aggregation. Header matching is case-insensitive for required headers, so `report model` and `Report model` are accepted as `Report Model`.
 - MVP duplicate import handling uses replace mode for the same report month + import type + product/manufacturer scope.
 - Header validation is required for CSV imports. Extra columns may be ignored or stored as raw JSON, but missing required columns should reject the import.
 - Raw service `keydate` must match the selected report month. Reject if most rows are for a different month; show CHECK with sample rows for small outliers.
@@ -88,6 +91,10 @@ FQMS:
 - Accumulated PPM denominator is `accumulated_sales * launching_period`.
 - Total FQMS AVG PPM uses total exposure across models, not an average of model PPM values.
 - If denominator inputs are missing or zero, return CHECK/blank rather than `Infinity`, `NaN`, or misleading values.
+- Phase 4 FQMS exact proof cannot be derived from one monthly raw service file plus one monthly sales file. It needs accumulated claims per model, accumulated sales per model, launching month/period, and target PPM.
+- For April 2026 LCD LOCAL, accumulated claims come from the 14 active monitoring workbooks in `D:\ARISAFARI\Works\FQMS - Sharp Confidential\02_LCD SEID\RAW DATA\Monitoring\01_active`; accumulated sales comes from `C:\Users\GAY0700622\Documents\sales akumulasi into april 2026.csv`.
+- Run `node scripts/proof-fqms-april.mjs` to regenerate the April 2026 accumulated FQMS proof. The script also accepts optional args: monitoring directory, sales CSV path, output CSV path.
+- Current April 2026 LCD LOCAL accumulated proof totals: accumulated sales `821,326`; defect `4,061`; non-defect `1,025`; total claim `5,086`; exposure `11,931,633`; defect PPM `340.355759`; non-defect PPM `85.906095`; total PPM `426.261854`.
 
 F-COST:
 

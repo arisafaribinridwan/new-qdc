@@ -1,6 +1,6 @@
 # PRD — QRCC Data Center FQMS/F-COST Automated Monthly Workflow
 
-> **Versi**: 3.1 · **Terakhir diperbarui**: 2026-05-17
+> **Versi**: 3.2 · **Terakhir diperbarui**: 2026-05-19
 >
 > Dokumen ini adalah **PRD core utama** untuk QRCC Data Center. Detail frontend, backend, report specification, dan task implementasi dipisahkan ke dokumen turunan agar lebih mudah dipelihara.
 
@@ -54,6 +54,7 @@ Aplikasi tidak boleh menjadikan Excel sebagai database. Excel hanya output/templ
 6. **Explicit grouping** — Aturan penggabungan model dan mapping factory/manufacturer disimpan di tabel reference, bukan hardcode tersembunyi.
 7. **Portable zero-install** — Aplikasi harus dapat dijalankan tanpa hak admin dan tanpa instalasi dependency eksternal di PC kantor.
 8. **Report parity** — Angka report harus bisa dibuktikan sama dengan hitungan manual Excel/reference report sebelum UI dipercantik.
+9. **Sales report model grouping** — Sales CSV memakai `Model` sebagai model asli/source untuk audit dan `Report Model` sebagai model laporan untuk grouping/agregasi. Required header matching harus toleran terhadap kapitalisasi seperti `report model` atau `Report model`.
 
 ---
 
@@ -110,10 +111,19 @@ Scope Slice 0:
 - F-COST dihitung dari semua cost rows valid.
 - Cost disimpan dalam rupiah asli; scaling hanya untuk tampilan/export.
 - Count/quantity harus exact terhadap referensi April 2026; cost boleh berbeda hanya karena pembulatan presentasi.
+- Sales CSV Slice 0 wajib memiliki kolom `Report Model`; model consolidation seperti `2T-C32HD1400I` ke `2T-C32HD1500I` dikontrol dari kolom tersebut, bukan hardcode di parser.
 - Critical validation issue memblokir export; warning/CHECK tidak memblokir export.
 - Portable Node bundle smoke test dilakukan lebih awal setelah app shell + SQLite minimal berjalan.
 
 Slice 0 dianggap lulus jika angka FQMS/F-COST April 2026 LCD LOCAL terbukti akurat, preview dan Excel berasal dari view model yang sama, re-import tidak menyebabkan double count, dan app bisa menjalankan smoke flow dari paket portable awal.
+
+Temuan Phase 4 terbaru untuk FQMS April 2026 LCD LOCAL:
+
+- FQMS accumulated proof tidak bisa diselesaikan hanya dari satu bulan raw service dan satu bulan sales. Section C membutuhkan akumulasi per model dari launching month sampai report month.
+- Untuk April 2026 LCD LOCAL, claim akumulasi per model berasal dari 14 workbook monitoring aktif, sedangkan sales akumulasi per model berasal dari CSV trusted `sales akumulasi into april 2026.csv`.
+- Proof repeatable dibuat sebagai `scripts/proof-fqms-april.mjs`; output reference-nya adalah `storage/proofs/fqms-accumulated-lcd-local-2026-04.csv` dan bisa digenerate ulang.
+- Hasil proof accumulated April 2026 LCD LOCAL: accumulated sales `821,326`; defect `4,061`; non-defect `1,025`; total claim `5,086`; exposure `11,931,633`; defect PPM `340.355759`; non-defect PPM `85.906095`; total PPM `426.261854`.
+- Total FQMS AVG PPM wajib dihitung dari total exposure semua model, bukan average sederhana PPM per model.
 
 ## 20 · Scope MVP
 
@@ -222,3 +232,5 @@ MVP dianggap selesai jika user dapat menyelesaikan satu siklus bulanan penuh tan
 11. LY F-Cost dihitung dari bulan yang sama satu tahun sebelumnya, bukan input manual.
 12. PDF memakai browser print, bukan Playwright.
 13. Angka parser April 2026 harus dibuktikan akurat sebelum UI/report final dianggap selesai.
+14. Phase 4 FQMS accumulated proof April 2026 LCD LOCAL memakai claim akumulasi dari workbook monitoring, sales akumulasi dari trusted CSV, dan denominator `accumulated_sales × launching_period`.
+15. Sales aggregation memakai `Report Model` sebagai model laporan; `Model` tetap disimpan sebagai source model untuk traceability.
