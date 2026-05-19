@@ -5,7 +5,7 @@ import { parseCsv } from './csv'
 import { ImportNotFoundError, ImportValidationError } from './errors'
 import { normalizeSalesRow } from './normalizers'
 import type { ImportCsvInput, ImportSummary } from './types'
-import { filterRecordsByFactoryMapping, indexRecords, resolveImportScope, validateRequiredHeaders } from './validators'
+import { filterRecordsByFactoryMapping, indexRecords, resolveImportScope, validateRequiredHeaders, validateSalesMonths } from './validators'
 
 export async function importSalesCsv(input: ImportCsvInput): Promise<ImportSummary> {
   const scopeInput = resolveImportScope(input)
@@ -40,6 +40,7 @@ export async function importSalesCsv(input: ImportCsvInput): Promise<ImportSumma
     activeFactoryMappings.map(mapping => mapping.factoryCode)
   )
   const warnings = filtered.warnings
+  validateSalesMonths(filtered.accepted, scopeInput.monthKey)
 
   return database.transaction((tx) => {
     const importsRepository = createImportsRepository(tx)
@@ -69,8 +70,7 @@ export async function importSalesCsv(input: ImportCsvInput): Promise<ImportSumma
       item.record,
       item.rowNumber,
       createdImport.id,
-      scopeResult.scope.id,
-      scopeInput.monthKey
+      scopeResult.scope.id
     )))
 
     const completedImport = importsRepository.update(createdImport.id, {

@@ -70,3 +70,22 @@ export type ImportHistoryItem = {
   replacedImportId: number | null
   importedAt: string
 }
+
+export type ImportStatusItem = {
+  importType: DataImport['importType']
+  hasCurrentMonthImport: boolean
+  currentMonthImport: ImportHistoryItem | null
+  lastImportedMonth: string | null
+  lastImport: ImportHistoryItem | null
+}
+
+export type ImportStatus = {
+  monthKey: string
+  productCode: string
+  manufacturerCode: string
+  reportScopeId: number | null
+  imports: Record<DataImport['importType'], ImportStatusItem>
+  rawService: {
+    manualOverrideCount: number
+  }
+}

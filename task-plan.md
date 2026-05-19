@@ -13,6 +13,8 @@
 - [ ] Pertahankan boundary backend: API controller → service → repository → SQLite.
 - [ ] Pertahankan Excel sebagai output/template saja, bukan database.
 - [ ] Simpan raw rows agar semua angka summary/report bisa ditelusuri ulang.
+- [ ] Tampilkan status import per month/product/scope agar operator tahu bulan terakhir yang sudah memiliki sales/raw data.
+- [ ] Raw service review memakai override line-level untuk `symptom` dan `action`; jangan timpa override dengan import ulang.
 - [ ] Preview dan Excel export harus berasal dari report view model yang sama.
 - [ ] Critical validation issue memblokir export; warning/CHECK tidak memblokir export.
 - [ ] Portable packaging dibuktikan dini dengan portable Node bundle smoke test.
@@ -36,7 +38,8 @@ Scope terkunci:
 - [ ] FQMS claim quantity memakai `job_sheet_section = 1`.
 - [ ] F-COST memakai semua cost rows valid.
 - [ ] Cost disimpan dalam rupiah asli.
-- [ ] Re-import same month + product + scope + import type memakai automatic replace.
+- [ ] Re-import sales same month + product + scope + import type memakai automatic replace.
+- [ ] Raw service replace mode Phase 3 dianggap baseline sementara; target operasionalnya staging compare + upsert per notification/line.
 
 Gate lulus Slice 0:
 
@@ -110,6 +113,7 @@ Tujuan: ingestion deterministic dan auditable.
 - [x] Simpan raw service rows dengan raw JSON jika perlu.
 - [x] Implement import metadata: filename, row count, accepted count, rejected count, warning count, timestamp.
 - [x] Implement automatic replace untuk same month + product + scope + import type.
+- [x] Update sales required headers agar `Sales Month` wajib dan divalidasi terhadap selected report month.
 - [x] Implement split LOCAL berdasarkan factory mapping.
 - [x] Implement keydate month validation untuk raw service.
 - [x] Implement sample outlier reporting untuk row beda bulan.
@@ -123,6 +127,13 @@ Gate Phase 3:
 - [x] Extra columns tidak merusak import.
 - [x] Import ulang file yang sama mengganti raw rows lama, bukan append double.
 - [x] Import history mencatat replace action.
+
+Phase 3 follow-up decision:
+
+- [x] Pertahankan sales replace mode sebagai perilaku target.
+- [ ] Ganti raw service operational re-import dari replace penuh menjadi staging compare + upsert per notification/line sebelum raw review dipakai untuk workflow nyata.
+- [x] Tambahkan master action import/seed dari `.doc/dummy master action.csv` atau sumber final dengan kolom `Action`, `Category`, `Defect`.
+- [ ] Hitung effective `defect_category` dan `defect` dari effective action, bukan dari edit manual langsung.
 
 ## Phase 4 — Aggregation Proof of Accuracy
 
@@ -174,8 +185,14 @@ Tujuan: validasi menjadi gate operasional, bukan checklist abstrak.
 - [ ] Implement import presence validation.
 - [ ] Implement header validation result persistence.
 - [ ] Implement report month consistency validation.
+- [x] Implement sales `Sales Month` consistency validation.
+- [x] Implement import status lookup per month/product/scope/import type.
 - [ ] Implement factory/model mapping completeness untuk Slice 0.
 - [ ] Implement duplicate/re-import safety validation.
+- [ ] Implement raw service staging compare status: `NEW_NOTIFICATION`, `DUPLICATE_UNCHANGED`, `SOURCE_CHANGED`, `LINE_COUNT_CHANGED`, `HAS_MANUAL_OVERRIDE`, `OVERRIDE_CONFLICT`.
+- [x] Implement raw service line key/fingerprint: `notification + job_sheet_section + part_code + line_no_dalam_notification` sebagai baseline.
+- [ ] Treat changed line count for an existing notification as CHECK/CONFLICT.
+- [ ] Ensure raw import ulang tidak menimpa manual override `symptom`/`action`.
 - [ ] Implement denominator safety validation.
 - [ ] Implement FQMS total consistency validation.
 - [ ] Implement F-COST total consistency validation.
@@ -189,6 +206,7 @@ Gate Phase 5:
 - [ ] Critical issue memblokir Excel export.
 - [ ] Warning/CHECK tetap tampil tetapi tidak memblokir export.
 - [ ] Tiap issue punya reason dan related data reference jika tersedia.
+- [ ] Existing import status dan raw conflict status muncul sebagai issue yang bisa ditelusuri ke Review Anomalies.
 
 ## Phase 6 — Report View Model, Preview, dan Excel Export
 
@@ -217,9 +235,12 @@ Tujuan: user bisa menjalankan Slice 0 tanpa full CRUD.
 - [ ] Buat atau rapikan app layout utama secukupnya.
 - [ ] Buat Month/Scope page atau dashboard control untuk April 2026, LCD, LOCAL.
 - [ ] Buat Import Center untuk sales CSV dan raw service CSV.
-- [ ] Tampilkan import status, row counts, warnings, dan replace status.
+- [ ] Tampilkan import status, last imported month, row counts, warnings, anomaly count, exported status, dan replace/upsert status.
+- [ ] Tampilkan preview compare saat upload raw service menemukan existing data.
 - [ ] Buat Review Anomalies untuk missing mapping/outlier/error rows.
 - [ ] Tambahkan edit minimal dari Review Anomalies untuk unblock import.
+- [ ] Tambahkan raw line-level override untuk `symptom` dan `action`.
+- [ ] Tampilkan effective category/defect hasil master action setelah action dioverride.
 - [ ] Buat Validation Summary dengan filter blocking vs non-blocking.
 - [ ] Buat Report Preview/Export untuk FQMS + F-COST ringkas.
 - [ ] Hindari full `/models`, `/references`, dan `/targets` CRUD sampai Slice 0 lulus.
@@ -228,7 +249,7 @@ Gate Phase 7:
 
 - [ ] User dapat menyelesaikan flow dari pilih scope → import → review anomaly → validation → preview/export.
 - [ ] UI menampilkan critical block state dengan jelas.
-- [ ] UI menampilkan replace import behavior dengan jelas.
+- [ ] UI menampilkan sales replace behavior dan raw upsert/compare behavior dengan jelas.
 
 ## Phase 8 — Portable Node Bundle Smoke Test
 
@@ -259,6 +280,8 @@ Jangan mulai phase ini sebelum gate Slice 0 lulus.
 - [ ] Lengkapi F-COST Summary/A/B/C.
 - [ ] Tambahkan full master data CRUD jika edit minimal sudah tidak cukup.
 - [ ] Tambahkan target management lengkap.
+- [ ] Tambahkan export snapshot/history agar report final lama tidak berubah saat current data direvisi.
+- [ ] Tambahkan audit/version history raw service line source dan manual override jika kebutuhan operasional melebar.
 - [ ] Tambahkan backup/restore SQLite.
 - [ ] Tambahkan browser Print to PDF polish dan CSS print.
 - [ ] Uji portable package ulang di Windows bersih.

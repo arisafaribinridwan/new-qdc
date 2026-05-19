@@ -142,7 +142,7 @@ function hasCostValue(row: RawServiceRow) {
 
 function countDefectStatuses(rows: RawServiceRow[]) {
   return rows.reduce<Record<string, number>>((counts, row) => {
-    const status = normalizeDefectStatus(readRawJsonField(row.rawJson, 'defect_category'))
+    const status = normalizeDefectStatus(row.sourceDefectCategory)
 
     if (!status) {
       return counts
@@ -151,17 +151,6 @@ function countDefectStatuses(rows: RawServiceRow[]) {
     counts[status] = (counts[status] ?? 0) + 1
     return counts
   }, {})
-}
-
-function readRawJsonField(rawJson: string, field: string) {
-  try {
-    const parsed = JSON.parse(rawJson) as Record<string, unknown>
-    const value = parsed[field]
-    return typeof value === 'string' ? value : null
-  }
-  catch {
-    return null
-  }
 }
 
 function normalizeDefectStatus(value: string | null) {

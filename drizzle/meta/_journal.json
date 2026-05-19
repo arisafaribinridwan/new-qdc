@@ -22,6 +22,13 @@
       "when": 1779086260000,
       "tag": "0002_seed_march_2026_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1779177265324,
+      "tag": "0003_talented_warpath",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { defaultImportScope } from './constants'
 import { ImportValidationError } from './errors'
-import { normalizeCode } from './normalizers'
+import { normalizeCode, normalizeSalesMonth } from './normalizers'
 import type { CsvRecord, ImportScopeInput, ImportWarning } from './types'
 
 export type ResolvedImportScope = {
@@ -108,6 +108,20 @@ export function validateRawServiceKeydates(records: IndexedCsvRecord[], monthKey
     rows: mismatchedRows.slice(0, 10),
     count: mismatchedRows.length
   }]
+}
+
+export function validateSalesMonths(records: IndexedCsvRecord[], monthKey: string) {
+  const mismatchedRows = records
+    .filter(item => normalizeSalesMonth(item.record['Sales Month'], item.rowNumber) !== monthKey)
+    .map(item => item.rowNumber)
+
+  if (mismatchedRows.length > 0) {
+    throw new ImportValidationError('Sales CSV contains rows outside the selected report month.', {
+      monthKey,
+      mismatchedCount: mismatchedRows.length,
+      sampleRows: mismatchedRows.slice(0, 10)
+    })
+  }
 }
 
 function createRejectedFactoryWarning(rejected: IndexedCsvRecord[]): ImportWarning[] {

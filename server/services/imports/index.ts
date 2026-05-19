@@ -1,5 +1,6 @@
 export { ImportNotFoundError, ImportValidationError } from './errors'
 export { getImportHistory } from './getImportHistory'
+export { getImportStatus } from './getImportStatus'
 export { importRawServiceCsv } from './importRawServiceCsv'
 export { importSalesCsv } from './importSalesCsv'
-export type { ImportCsvInput, ImportHistoryItem, ImportSummary } from './types'
+export type { ImportCsvInput, ImportHistoryItem, ImportStatus, ImportSummary } from './types'
