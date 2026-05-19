@@ -203,7 +203,7 @@ Tujuan: validasi menjadi gate operasional, bukan checklist abstrak.
 
 Gate Phase 5:
 
-- [ ] Critical issue memblokir Excel export.
+- [x] Critical issue memblokir Excel export.
 - [x] Warning/CHECK tetap tampil tetapi tidak memblokir export.
 - [x] Tiap issue punya reason dan related data reference jika tersedia.
 - [x] Existing import status dan raw conflict status muncul sebagai issue yang bisa ditelusuri ke Review Anomalies.
@@ -212,21 +212,21 @@ Gate Phase 5:
 
 Tujuan: preview dan Excel tidak punya logic hitung berbeda.
 
-- [ ] Build report view model FQMS ringkas untuk Slice 0.
-- [ ] Build report view model F-COST ringkas untuk Slice 0.
-- [ ] Implement `GET /api/reports/view-model`.
+- [x] Build report view model FQMS ringkas untuk Slice 0.
+- [x] Build report view model F-COST ringkas untuk Slice 0.
+- [x] Implement `GET /api/reports/view-model`.
 - [ ] Render preview dari view model yang sama.
-- [ ] Map FQMS view model ke `templates/excel/FQMS - LCD LOCAL.xlsx`.
-- [ ] Map F-COST view model ke `templates/excel/FCOST - LCD LOCAL.xlsx`.
-- [ ] Implement `POST /api/reports/export-excel`.
-- [ ] Pastikan export menolak jika validation critical masih ada.
-- [ ] Simpan export history jika `export_jobs` sudah tersedia.
+- [x] Map FQMS view model ke `templates/excel/FQMS - LCD LOCAL.xlsx`.
+- [x] Map F-COST view model ke `templates/excel/FCOST - LCD LOCAL.xlsx`.
+- [x] Implement `POST /api/reports/export-excel`.
+- [x] Pastikan export menolak jika validation critical masih ada.
+- [x] Simpan export history jika `export_jobs` sudah tersedia.
 
 Gate Phase 6:
 
-- [ ] Total di preview sama dengan Excel export.
+- [x] Total di preview sama dengan Excel export.
 - [ ] Perbedaan hanya formatting/rounding presentasi.
-- [ ] Excel file bisa dibuka dan angka utama cocok dengan referensi.
+- [x] Excel file bisa dibuka dan angka utama cocok dengan referensi.
 
 ## Phase 7 — Minimal UI untuk 5 Halaman Inti
 

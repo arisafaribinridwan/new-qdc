@@ -1,4 +1,5 @@
 export { createFactoryMappingsRepository } from './factoryMappings'
+export { createExportJobsRepository } from './exportJobs'
 export { createFcostSummariesRepository } from './fcostSummaries'
 export { createFqmsSummariesRepository } from './fqmsSummaries'
 export { createImportsRepository } from './imports'
@@ -10,6 +11,7 @@ export { createScopesRepository } from './scopes'
 export { createValidationRunsRepository } from './validationRuns'
 
 export type { FactoryMappingsRepository } from './factoryMappings'
+export type { ExportJobsRepository } from './exportJobs'
 export type { FcostSummariesRepository } from './fcostSummaries'
 export type { FqmsSummariesRepository } from './fqmsSummaries'
 export type { ImportsRepository } from './imports'
