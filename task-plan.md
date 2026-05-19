@@ -189,10 +189,10 @@ Tujuan: validasi menjadi gate operasional, bukan checklist abstrak.
 - [x] Implement import status lookup per month/product/scope/import type.
 - [x] Implement factory/model mapping completeness untuk Slice 0.
 - [x] Implement duplicate/re-import safety validation.
-- [ ] Implement raw service staging compare status: `NEW_NOTIFICATION`, `DUPLICATE_UNCHANGED`, `SOURCE_CHANGED`, `LINE_COUNT_CHANGED`, `HAS_MANUAL_OVERRIDE`, `OVERRIDE_CONFLICT`.
+- [x] Implement raw service staging compare status: `NEW_NOTIFICATION`, `DUPLICATE_UNCHANGED`, `SOURCE_CHANGED`, `LINE_COUNT_CHANGED`, `HAS_MANUAL_OVERRIDE`, `OVERRIDE_CONFLICT`.
 - [x] Implement raw service line key/fingerprint: `notification + job_sheet_section + part_code + line_no_dalam_notification` sebagai baseline.
-- [ ] Treat changed line count for an existing notification as CHECK/CONFLICT.
-- [ ] Ensure raw import ulang tidak menimpa manual override `symptom`/`action`.
+- [x] Treat changed line count for an existing notification as CHECK/CONFLICT.
+- [x] Ensure raw import ulang tidak menimpa manual override `symptom`/`action`.
 - [x] Implement denominator safety validation.
 - [x] Implement FQMS total consistency validation.
 - [x] Implement F-COST total consistency validation.
@@ -204,9 +204,9 @@ Tujuan: validasi menjadi gate operasional, bukan checklist abstrak.
 Gate Phase 5:
 
 - [ ] Critical issue memblokir Excel export.
-- [ ] Warning/CHECK tetap tampil tetapi tidak memblokir export.
-- [ ] Tiap issue punya reason dan related data reference jika tersedia.
-- [ ] Existing import status dan raw conflict status muncul sebagai issue yang bisa ditelusuri ke Review Anomalies.
+- [x] Warning/CHECK tetap tampil tetapi tidak memblokir export.
+- [x] Tiap issue punya reason dan related data reference jika tersedia.
+- [x] Existing import status dan raw conflict status muncul sebagai issue yang bisa ditelusuri ke Review Anomalies.
 
 ## Phase 6 — Report View Model, Preview, dan Excel Export
 

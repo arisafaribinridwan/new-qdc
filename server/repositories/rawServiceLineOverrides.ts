@@ -23,6 +23,15 @@ export function createRawServiceLineOverridesRepository(db?: RepositoryDb) {
         .get()
 
       return Number(result?.count ?? 0)
+    },
+
+    listByReportScopeId(reportScopeId: number) {
+      return database
+        .select()
+        .from(rawServiceLineOverrides)
+        .where(eq(rawServiceLineOverrides.reportScopeId, reportScopeId))
+        .orderBy(rawServiceLineOverrides.notification, rawServiceLineOverrides.lineKey)
+        .all()
     }
   }
 }
