@@ -6,6 +6,7 @@ export const defaultImportScope = {
 
 export const salesRequiredHeaders = [
   'Model',
+  'Report Model',
   'Category',
   'Sales Amount',
   'Sales (Qty)',
