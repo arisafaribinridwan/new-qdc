@@ -156,9 +156,10 @@ defect_ppm = total_defect_category / (accumulated_sales_model × launching_perio
 Implementasi Slice 0:
 
 - Model Section D mengikuti urutan/model aktif Section C.
-- Defect berasal dari effective raw service row: `job_sheet_section = 1`, model masuk active FQMS model set, action ada di `master_actions`, category `DEFECT`, dan defect bukan kosong/`N/A`.
+- Defect utama berasal dari `fqms_historical_defect_rows`, yaitu hasil import sheet `raw` dari 14 workbook monitoring aktif. Jika tabel historis kosong, aplikasi fallback ke effective raw service rows operasional.
+- Untuk row historis monitoring, workbook dianggap sebagai FQMS-curated source sehingga filter utamanya adalah model masuk active FQMS model set, category `DEFECT`, dan defect bukan kosong/`N/A`. `job_sheet_section` tidak dipaksa karena row historis lama di workbook monitoring tidak selalu memiliki nilai section.
 - `defect_occup` memakai total defect model pada bucket yang tersedia di SQLite.
-- Untuk April 2026, SQLite baru memiliki raw service month `202604`; karena itu bucket `~Jan'26`, `Feb'26`, dan `Mar'26` dibiarkan blank/non-blocking CHECK, sedangkan bucket `Apr'26` diisi dari data yang tersedia.
+- Untuk April 2026, bucket `~Jan'26`, `Feb'26`, `Mar'26`, dan `Apr'26` diisi dari raw historis workbook monitoring yang sudah dipersist ke SQLite.
 - Export Excel membersihkan placeholder template `Model A`, `Model B`, dan seterusnya pada range Worst Defect.
 
 ---

@@ -1,3 +1,5 @@
+import type { fqmsHistoricalDefectRows } from '../db/schema'
+import { createFqmsHistoricalDefectRowsRepository } from '../repositories'
 import type { FqmsAccumulatedReportViewModel } from '../services/fqmsAccumulated'
 import { normalizeFqmsModelCode } from '../services/fqmsModelSeries'
 import { listEffectiveRawServiceRowsByScopeId } from '../services/rawService/effectiveRows'
@@ -34,6 +36,17 @@ export type FqmsWorstDefectsViewModel = {
 }
 
 type AccumulatedModelRow = FqmsAccumulatedReportViewModel['rows'][number]
+type HistoricalDefectRow = typeof fqmsHistoricalDefectRows.$inferSelect
+
+type WorstDefectSourceRow = {
+  sourceModelCode: string | null
+  reportModelCode: string | null
+  keydate: string
+  defectCategory: string | null
+  defect: string | null
+  masterActionMapped: boolean
+  reportable: boolean
+}
 
 type GroupedWorstDefect = {
   reportModelCode: string
@@ -52,31 +65,40 @@ export function getFqmsWorstDefectsViewModel(input: {
     return null
   }
 
-  const effectiveRows = listEffectiveRawServiceRowsByScopeId(input.reportScopeId, input.db)
+  const historicalRows = createFqmsHistoricalDefectRowsRepository(input.db).listByReportScopeId(input.reportScopeId)
+  const rows = historicalRows.length > 0
+    ? historicalRows.map(toWorstDefectSourceRow)
+    : listEffectiveRawServiceRowsByScopeId(input.reportScopeId, input.db).map(toWorstDefectSourceRow)
+
   return buildFqmsWorstDefectsViewModel({
     monthKey: input.monthKey,
     accumulatedRows: input.accumulated.rows,
-    effectiveRows
+    rows
   })
 }
 
 export function buildFqmsWorstDefectsViewModel(input: {
   monthKey: string
   accumulatedRows: AccumulatedModelRow[]
-  effectiveRows: EffectiveRawServiceRow[]
+  rows: WorstDefectSourceRow[]
 }): FqmsWorstDefectsViewModel {
-  const buckets = createBuckets(input.monthKey, input.effectiveRows)
+  const buckets = createBuckets(input.monthKey, input.rows)
   const activeModels = createActiveModels(input.accumulatedRows)
   const grouped = new Map<string, GroupedWorstDefect>()
   const totalByModel = new Map<string, number>()
 
-  for (const row of input.effectiveRows) {
+  for (const row of input.rows) {
     if (!isFqmsWorstDefectRow(row)) {
       continue
     }
 
-    const normalizedModelCode = normalizeFqmsModelCode(row.modelCode)
-    const reportModelCode = normalizedModelCode ? activeModels.aliases.get(normalizedModelCode) : null
+    const normalizedReportModelCode = normalizeFqmsModelCode(row.reportModelCode)
+    const normalizedSourceModelCode = normalizeFqmsModelCode(row.sourceModelCode)
+    const reportModelCode = normalizedReportModelCode
+      ? activeModels.aliases.get(normalizedReportModelCode)
+      : normalizedSourceModelCode
+        ? activeModels.aliases.get(normalizedSourceModelCode)
+        : null
 
     if (!reportModelCode) {
       continue
@@ -88,7 +110,7 @@ export function buildFqmsWorstDefectsViewModel(input: {
       continue
     }
 
-    const defect = normalizeDefectLabel(row.effectiveDefect)
+    const defect = normalizeDefectLabel(row.defect)
     const groupKey = `${reportModelCode}::${defect}`
     const group = grouped.get(groupKey) ?? createGroupedWorstDefect(reportModelCode, defect)
 
@@ -137,6 +159,30 @@ export function buildFqmsWorstDefectsViewModel(input: {
   }
 }
 
+function toWorstDefectSourceRow(row: HistoricalDefectRow | EffectiveRawServiceRow): WorstDefectSourceRow {
+  if ('effectiveDefectCategory' in row) {
+    return {
+      sourceModelCode: row.modelCode,
+      reportModelCode: row.modelCode,
+      keydate: row.keydate,
+      defectCategory: row.effectiveDefectCategory,
+      defect: row.effectiveDefect,
+      masterActionMapped: row.masterAction !== null,
+      reportable: row.jobSheetSection === 1
+    }
+  }
+
+  return {
+    sourceModelCode: row.sourceModelCode,
+    reportModelCode: row.reportModelCode,
+    keydate: row.keydate,
+    defectCategory: row.defectCategory,
+    defect: row.defect,
+    masterActionMapped: true,
+    reportable: true
+  }
+}
+
 function createActiveModels(rows: AccumulatedModelRow[]) {
   const aliases = new Map<string, string>()
   const denominatorByReportModel = new Map<string, number>()
@@ -163,11 +209,11 @@ function createActiveModels(rows: AccumulatedModelRow[]) {
   return { aliases, denominatorByReportModel }
 }
 
-function isFqmsWorstDefectRow(row: EffectiveRawServiceRow) {
-  return row.jobSheetSection === 1
-    && row.masterAction !== null
-    && row.effectiveDefectCategory === 'DEFECT'
-    && normalizeDefectLabel(row.effectiveDefect) !== 'N/A'
+function isFqmsWorstDefectRow(row: WorstDefectSourceRow) {
+  return row.reportable
+    && row.masterActionMapped
+    && row.defectCategory === 'DEFECT'
+    && normalizeDefectLabel(row.defect) !== 'N/A'
 }
 
 function createGroupedWorstDefect(reportModelCode: string, defect: string): GroupedWorstDefect {
@@ -184,7 +230,7 @@ function createGroupedWorstDefect(reportModelCode: string, defect: string): Grou
   }
 }
 
-function createBuckets(monthKey: string, rows: EffectiveRawServiceRow[]): FqmsWorstDefectBucket[] {
+function createBuckets(monthKey: string, rows: WorstDefectSourceRow[]): FqmsWorstDefectBucket[] {
   const reportMonth = normalizeMonthKey(monthKey)
   const monthMinus1 = addMonths(reportMonth, -1)
   const monthMinus2 = addMonths(reportMonth, -2)

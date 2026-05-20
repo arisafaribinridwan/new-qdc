@@ -162,9 +162,11 @@ Catatan status untuk lanjut kerja di PC lain:
 - Data claim akumulasi April 2026 diambil dari 14 workbook monitoring aktif di `D:\ARISAFARI\Works\FQMS - Sharp Confidential\02_LCD SEID\RAW DATA\Monitoring\01_active`.
 - Script proof FQMS akumulasi dibuat di `scripts/proof-fqms-april.mjs` dan menghasilkan `storage/proofs/fqms-accumulated-lcd-local-2026-04.csv`.
 - Script import/verifikasi FQMS akumulasi dari 14 workbook monitoring lokal dibuat di `scripts/import-fqms-accumulated-monitoring.mjs`. Default-nya membaca `.doc/raw`, membandingkan workbook terhadap proof CSV April 2026, lalu replace rows `fqms_accumulated_model_rows` untuk scope `202604/LCD/LOCAL`.
+- Script import raw historis FQMS dari sheet `raw` 14 workbook monitoring dibuat di `scripts/import-fqms-historical-defects.mjs`. Default-nya membaca `.doc/raw`, memvalidasi total `DEFECT`/`NON_DEFECT` terhadap sheet `summary`, lalu replace rows `fqms_historical_defect_rows` untuk scope `202604/LCD/LOCAL`.
 - Hasil proof FQMS April 2026 LCD LOCAL dari data akumulasi: accumulated sales `821,326`; defect `4,061`; non-defect `1,025`; total claim `5,086`; exposure `11,931,633`; defect PPM `340.355759`; non-defect PPM `85.906095`; total PPM `426.261854`.
 - Untuk PC lain, jalankan ulang proof dengan `node scripts/proof-fqms-april.mjs <monitoring-dir> <sales-csv-path> <output-csv-path>` jika path lokal berbeda.
 - Untuk mengisi SQLite dari workbook yang sudah disertakan di repo, jalankan `node scripts/import-fqms-accumulated-monitoring.mjs`. Optional args: `<report-month> <monitoring-dir> <proof-csv-path> <database-path>`.
+- Untuk mengisi raw historis Section D dari workbook monitoring, jalankan `node scripts/import-fqms-historical-defects.mjs`. Optional args: `<report-month> <monitoring-dir> <database-path>`.
 - `storage/proofs/` bisa ignored oleh git; jangan menganggap output CSV selalu ikut repo. Script proof adalah sumber regenerasi utama.
 - Final cross-check Phase 4 sudah dikonfirmasi cocok semua terhadap referensi FQMS/F-COST April 2026 LCD LOCAL. Tidak ada mismatch blocking yang tersisa untuk Phase 4.
 
@@ -179,6 +181,7 @@ Catatan status untuk lanjut kerja di PC lain:
 - [x] Buat proof FQMS akumulasi April 2026 dari sales akumulasi dan workbook monitoring per model.
 - [x] Persist proof FQMS akumulasi April 2026 per model ke SQLite untuk dipakai service/view model.
 - [x] Tambahkan script repeatable untuk memverifikasi 14 workbook monitoring aktif `.doc/raw` terhadap proof April 2026 dan replace data SQLite jika cocok.
+- [x] Tambahkan tabel dan importer raw historis FQMS dari sheet `raw` workbook monitoring untuk Section D.
 - [x] Build reusable FQMS accumulated service yang menghitung exposure dan PPM dari persisted rows + master `fqms_model_series`.
 - [x] Bandingkan FQMS quantity/count terhadap referensi Excel/PDF.
 - [x] Bandingkan F-COST amount terhadap referensi Excel/PDF.
@@ -239,7 +242,7 @@ Tujuan: preview dan Excel tidak punya logic hitung berbeda.
 - [x] Pastikan Section C export mengurutkan model dari launching month paling lama, membulatkan angka tampilan ke atas tanpa desimal, dan mengosongkan `L37:M37`.
 - [x] Pastikan style total label Section C `C37:E37` merge dengan fill `#31869B`, font Calibri 9, dan text putih.
 - [x] Build FQMS Section D Worst Defect view model dari effective raw service rows + master action + denominator Section C.
-- [x] Map Section D Worst Defect ke sheet utama `FQMS`, bersihkan placeholder `Model A` dan isi hanya bucket bulan yang tersedia dari SQLite.
+- [x] Map Section D Worst Defect ke sheet utama `FQMS`, bersihkan placeholder `Model A`, dan isi bucket `~Jan'26`, `Feb'26`, `Mar'26`, `Apr'26` dari `fqms_historical_defect_rows`.
 - [x] Map F-COST view model ke `templates/excel/FCOST - LCD LOCAL.xlsx`.
 - [x] Implement `POST /api/reports/export-excel`.
 - [x] Pastikan export menolak jika validation critical masih ada.
@@ -338,5 +341,5 @@ Jangan mulai phase ini sebelum gate Slice 0 lulus.
 - [x] Export Excel FQMS Section C menampilkan semua angka relevan tanpa desimal dan dibulatkan ke atas; nilai presisi tetap berasal dari view model untuk kalkulasi/audit.
 - [x] Export Excel FQMS Section C diurutkan berdasarkan launching month paling lama, lalu model code.
 - [x] Preview/export FQMS memakai accumulated view model historis saat rows akumulasi tersedia; monthly summary tetap fallback.
-- [x] Section D Worst Defect memakai model aktual yang sama dengan Section C; histori Jan-Mar/older dibiarkan blank/CHECK sampai data bulanan historis tersedia di SQLite.
+- [x] Section D Worst Defect memakai model aktual yang sama dengan Section C; histori older/Feb/Mar/Apr berasal dari sheet `raw` 14 workbook monitoring yang sudah dipersist ke SQLite.
 - [x] Buat master model-series FQMS final per product/manufacturer/month. Aggregation, validation, Review Anomalies, dan accumulated view model memakai master model-series, bukan baseline sales bulan berjalan.
