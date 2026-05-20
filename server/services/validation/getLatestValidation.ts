@@ -20,6 +20,7 @@ const emptySummary: ValidationRunSummary = {
     currentMonthRows: 0,
     duplicateLineKeys: 0,
     manualOverrideCount: 0,
+    invalidOverrideActionCount: 0,
     stagingCompare: {
       NEW_NOTIFICATION: 0,
       DUPLICATE_UNCHANGED: 0,
@@ -83,9 +84,31 @@ function parseSummary(value: string | null): ValidationRunSummary {
       return emptySummary
     }
 
+    const summary = parsed as Partial<ValidationRunSummary>
+
     return {
       ...emptySummary,
-      ...parsed as ValidationRunSummary
+      ...summary,
+      issueCounts: {
+        ...emptySummary.issueCounts,
+        ...summary.issueCounts
+      },
+      importStatus: {
+        ...emptySummary.importStatus,
+        ...summary.importStatus
+      },
+      rawService: {
+        ...emptySummary.rawService,
+        ...summary.rawService,
+        stagingCompare: {
+          ...emptySummary.rawService.stagingCompare,
+          ...summary.rawService?.stagingCompare
+        }
+      },
+      aggregation: {
+        ...emptySummary.aggregation,
+        ...summary.aggregation
+      }
     }
   }
   catch {

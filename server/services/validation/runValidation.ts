@@ -4,6 +4,7 @@ import {
   createFcostSummariesRepository,
   createFqmsSummariesRepository,
   createImportsRepository,
+  createMasterActionsRepository,
   createRawSalesRowsRepository,
   createRawServiceLineOverridesRepository,
   createRawServiceRowsRepository,
@@ -12,6 +13,8 @@ import {
 } from '../../repositories'
 import { importTypes } from '../imports/constants'
 import { resolveImportScope } from '../imports/validators'
+import { buildEffectiveRawServiceRows } from '../rawService'
+import type { EffectiveRawServiceRow } from '../rawService'
 import { ValidationNotFoundError } from './errors'
 import type {
   RawServiceStagingStatusCode,
@@ -25,6 +28,7 @@ import type {
 type RawSalesRow = ReturnType<ReturnType<typeof createRawSalesRowsRepository>['findByReportScopeId']>[number]
 type RawServiceRow = ReturnType<ReturnType<typeof createRawServiceRowsRepository>['findByReportScopeId']>[number]
 type RawServiceLineOverride = ReturnType<ReturnType<typeof createRawServiceLineOverridesRepository>['listByReportScopeId']>[number]
+type MasterAction = ReturnType<ReturnType<typeof createMasterActionsRepository>['listAll']>[number]
 type DataImport = ReturnType<ReturnType<typeof createImportsRepository>['findLatestByScopeAndType']>
 
 const claimJobSheetSection = 1
@@ -56,6 +60,7 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
     const serviceRowsRepository = createRawServiceRowsRepository(tx)
     const mappingsRepository = createFactoryMappingsRepository(tx)
     const overridesRepository = createRawServiceLineOverridesRepository(tx)
+    const masterActionsRepository = createMasterActionsRepository(tx)
     const fqmsRepository = createFqmsSummariesRepository(tx)
     const fcostRepository = createFcostSummariesRepository(tx)
     const validationRepository = createValidationRunsRepository(tx)
@@ -67,13 +72,19 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
     const serviceRows = serviceRowsRepository.findByReportScopeId(reportScopeId)
     const currentSalesRows = salesRows.filter(row => row.salesMonth === scopeInput.monthKey)
     const currentServiceRows = serviceRows.filter(row => row.keydate === scopeInput.monthKey)
+    const masterActions = masterActionsRepository.listAll()
+    const manualOverrides = overridesRepository.listByReportScopeId(reportScopeId)
+    const currentEffectiveServiceRows = buildEffectiveRawServiceRows(
+      currentServiceRows,
+      manualOverrides,
+      masterActions
+    )
     const activeMappings = mappingsRepository.listActiveByScope(
       scopeResult.product.id,
       scopeResult.manufacturer.id,
       scopeInput.monthKey
     )
     const activeFactoryCodes = new Set(activeMappings.map(mapping => mapping.factoryCode))
-    const manualOverrides = overridesRepository.listByReportScopeId(reportScopeId)
     const rawServiceStagingCompare = summarizeRawServiceStagingCompare(rawServiceImport)
     const fqms = fqmsRepository.findByReportScopeId(reportScopeId)
     const fcost = fcostRepository.findByReportScopeId(reportScopeId)
@@ -87,8 +98,9 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
     issues.push(...validateReimportSafety(salesImport, rawServiceImport, currentServiceRows))
     issues.push(...validateRawServiceStagingCompare(rawServiceStagingCompare))
     issues.push(...validateRawServiceOverrideContinuity(currentServiceRows, manualOverrides))
+    issues.push(...validateRawServiceOverrideActions(manualOverrides, masterActions))
     issues.push(...validateDenominator(fqms))
-    issues.push(...validateFqmsTotal(fqms, currentServiceRows))
+    issues.push(...validateFqmsTotal(fqms, currentEffectiveServiceRows))
     issues.push(...validateFcostTotal(fcost, currentServiceRows))
 
     const counts = countIssues(issues)
@@ -105,6 +117,7 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
         currentMonthRows: currentServiceRows.length,
         duplicateLineKeys: countDuplicateLineKeys(currentServiceRows),
         manualOverrideCount: manualOverrides.length,
+        invalidOverrideActionCount: countInvalidOverrideActions(manualOverrides, masterActions),
         stagingCompare: rawServiceStagingCompare.counts
       },
       aggregation: {
@@ -380,6 +393,25 @@ function validateRawServiceOverrideContinuity(serviceRows: RawServiceRow[], manu
   return issues
 }
 
+function validateRawServiceOverrideActions(
+  manualOverrides: RawServiceLineOverride[],
+  masterActions: MasterAction[]
+): ValidationIssueInput[] {
+  const invalidOverrides = getInvalidOverrideActions(manualOverrides, masterActions)
+
+  if (invalidOverrides.length === 0) {
+    return []
+  }
+
+  return [{
+    code: 'RAW_SERVICE_OVERRIDE_ACTION_MISSING_MASTER',
+    severity: 'critical',
+    reason: 'Some raw service manual override actions do not exist in master_actions.',
+    relatedPage: '/review-anomalies',
+    relatedData: { count: invalidOverrides.length, overrides: sampleOverrides(invalidOverrides) }
+  }]
+}
+
 function validateDenominator(fqms: ReturnType<ReturnType<typeof createFqmsSummariesRepository>['findByReportScopeId']>): ValidationIssueInput[] {
   if (!fqms) {
     return [{
@@ -486,7 +518,7 @@ function rawServiceCompareIssue(
 
 function validateFqmsTotal(
   fqms: ReturnType<ReturnType<typeof createFqmsSummariesRepository>['findByReportScopeId']>,
-  serviceRows: RawServiceRow[]
+  serviceRows: EffectiveRawServiceRow[]
 ): ValidationIssueInput[] {
   if (!fqms) {
     return []
@@ -494,6 +526,7 @@ function validateFqmsTotal(
 
   const issues: ValidationIssueInput[] = []
   const claimRows = serviceRows.filter(row => row.jobSheetSection === claimJobSheetSection)
+  const effectiveDefectStatusCounts = countEffectiveDefectStatuses(claimRows)
   const details = parseJsonObject(fqms.summaryJson)
   const unclassified = Number(details.unclassifiedClaimRows ?? 0)
   const storedTotal = fqms.defectCount + fqms.nonDefectCount + unclassified
@@ -519,6 +552,22 @@ function validateFqmsTotal(
         defectCount: fqms.defectCount,
         nonDefectCount: fqms.nonDefectCount,
         unclassifiedClaimRows: unclassified
+      }
+    })
+  }
+
+  if (fqms.defectCount !== (effectiveDefectStatusCounts.DEFECT ?? 0)
+    || fqms.nonDefectCount !== (effectiveDefectStatusCounts.NON_DEFECT ?? 0)) {
+    issues.push({
+      code: 'FQMS_EFFECTIVE_DEFECT_TOTAL_MISMATCH',
+      severity: 'error',
+      reason: 'Stored FQMS defect/non-defect counts do not match effective raw service action mapping.',
+      relatedPage: '/validation',
+      relatedData: {
+        storedDefectCount: fqms.defectCount,
+        storedNonDefectCount: fqms.nonDefectCount,
+        effectiveDefectCount: effectiveDefectStatusCounts.DEFECT ?? 0,
+        effectiveNonDefectCount: effectiveDefectStatusCounts.NON_DEFECT ?? 0
       }
     })
   }
@@ -598,6 +647,46 @@ function countDuplicateLineKeys(rows: RawServiceRow[]) {
   }
 
   return [...counts.values()].filter(count => count > 1).length
+}
+
+function getInvalidOverrideActions(manualOverrides: RawServiceLineOverride[], masterActions: MasterAction[]) {
+  const masterActionSet = new Set(masterActions.map(action => normalizeActionKey(action.action)))
+
+  return manualOverrides.filter(override => (
+    override.overrideAction
+    && !masterActionSet.has(normalizeActionKey(override.overrideAction))
+  ))
+}
+
+function countInvalidOverrideActions(manualOverrides: RawServiceLineOverride[], masterActions: MasterAction[]) {
+  return getInvalidOverrideActions(manualOverrides, masterActions).length
+}
+
+function countEffectiveDefectStatuses(rows: EffectiveRawServiceRow[]) {
+  return rows.reduce<Record<string, number>>((counts, row) => {
+    const status = normalizeDefectStatus(row.effectiveDefectCategory)
+
+    if (!status) {
+      return counts
+    }
+
+    counts[status] = (counts[status] ?? 0) + 1
+    return counts
+  }, {})
+}
+
+function normalizeDefectStatus(value: string | null) {
+  const normalized = (value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_')
+
+  if (!normalized || normalized === 'N/A') {
+    return null
+  }
+
+  return normalized
+}
+
+function normalizeActionKey(action: string) {
+  return action.trim().toUpperCase()
 }
 
 function parseJsonArray(value: string | null) {

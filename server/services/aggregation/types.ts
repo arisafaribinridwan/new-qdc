@@ -20,6 +20,8 @@ export type FqmsAggregationDetails = {
   ppm: number | null
   denominatorStatus: 'ok' | 'missing_or_zero'
   defectStatusCounts: Record<string, number>
+  manualOverrideRows: number
+  missingEffectiveActionMappings: number
 }
 
 export type FcostAggregationDetails = {

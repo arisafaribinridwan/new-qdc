@@ -52,12 +52,27 @@ export function saveRawServiceOverride(input: RawServiceOverrideInput = {}): Raw
     })
   }
 
+  const masterActions = createMasterActionsRepository(database).listAll()
+  const actionClassificationByAction = new Map(
+    masterActions.map(action => [normalizeCode(action.action), action])
+  )
+  const normalizedOverrideAction = normalizeNullableCode(parsed.data.overrideAction)
+  const overrideMasterAction = normalizedOverrideAction
+    ? actionClassificationByAction.get(normalizedOverrideAction) ?? null
+    : null
+
+  if (normalizedOverrideAction && !overrideMasterAction) {
+    throw new ReviewAnomaliesError('overrideAction must exist in master_actions.', {
+      overrideAction: normalizedOverrideAction
+    })
+  }
+
   const override = createRawServiceLineOverridesRepository(database).upsert({
     reportScopeId: scopeResult.scope.id,
     notification,
     lineKey: getReviewLineKey(row),
     overrideSymptom: normalizeNullableText(parsed.data.overrideSymptom),
-    overrideAction: normalizeNullableCode(parsed.data.overrideAction),
+    overrideAction: overrideMasterAction?.action ?? null,
     note: normalizeNullableText(parsed.data.note)
   })
   const activeMappings = createFactoryMappingsRepository(database).listActiveByScope(
@@ -66,11 +81,6 @@ export function saveRawServiceOverride(input: RawServiceOverrideInput = {}): Raw
     scopeInput.monthKey
   )
   const activeFactoryCodes = new Set(activeMappings.map(mapping => mapping.factoryCode))
-  const actionClassificationByAction = new Map(
-    createMasterActionsRepository(database)
-      .listActive()
-      .map(action => [normalizeCode(action.action), action])
-  )
 
   return {
     override,

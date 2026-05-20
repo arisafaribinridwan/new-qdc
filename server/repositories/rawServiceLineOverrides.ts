@@ -9,6 +9,21 @@ type NewRawServiceLineOverride = InferInsertModel<typeof rawServiceLineOverrides
 
 export function createRawServiceLineOverridesRepository(db?: RepositoryDb) {
   const database = resolveDb(db)
+  const upsert = (values: NewRawServiceLineOverride) => database
+    .insert(rawServiceLineOverrides)
+    .values(values)
+    .onConflictDoUpdate({
+      target: [rawServiceLineOverrides.reportScopeId, rawServiceLineOverrides.lineKey],
+      set: {
+        notification: values.notification,
+        overrideSymptom: values.overrideSymptom ?? null,
+        overrideAction: values.overrideAction ?? null,
+        note: values.note ?? null,
+        updatedAt: sql`CURRENT_TIMESTAMP`
+      }
+    })
+    .returning()
+    .get()
 
   return {
     create(values: NewRawServiceLineOverride) {
@@ -16,21 +31,11 @@ export function createRawServiceLineOverridesRepository(db?: RepositoryDb) {
     },
 
     upsert(values: NewRawServiceLineOverride) {
-      return database
-        .insert(rawServiceLineOverrides)
-        .values(values)
-        .onConflictDoUpdate({
-          target: [rawServiceLineOverrides.reportScopeId, rawServiceLineOverrides.lineKey],
-          set: {
-            notification: values.notification,
-            overrideSymptom: values.overrideSymptom ?? null,
-            overrideAction: values.overrideAction ?? null,
-            note: values.note ?? null,
-            updatedAt: sql`CURRENT_TIMESTAMP`
-          }
-        })
-        .returning()
-        .get()
+      return upsert(values)
+    },
+
+    upsertForLine(values: NewRawServiceLineOverride) {
+      return upsert(values)
     },
 
     findByScopeAndLineKey(reportScopeId: number, lineKey: string) {
@@ -41,6 +46,17 @@ export function createRawServiceLineOverridesRepository(db?: RepositoryDb) {
           eq(rawServiceLineOverrides.reportScopeId, reportScopeId),
           eq(rawServiceLineOverrides.lineKey, lineKey)
         ))
+        .get()
+    },
+
+    deleteByScopeAndLineKey(reportScopeId: number, lineKey: string) {
+      return database
+        .delete(rawServiceLineOverrides)
+        .where(and(
+          eq(rawServiceLineOverrides.reportScopeId, reportScopeId),
+          eq(rawServiceLineOverrides.lineKey, lineKey)
+        ))
+        .returning()
         .get()
     },
 

@@ -39,6 +39,17 @@ export function createRawServiceRowsRepository(db?: RepositoryDb) {
         .all()
     },
 
+    findByScopeAndLineKey(reportScopeId: number, lineKey: string) {
+      return database
+        .select()
+        .from(rawServiceRows)
+        .where(and(
+          eq(rawServiceRows.reportScopeId, reportScopeId),
+          eq(rawServiceRows.lineKey, lineKey)
+        ))
+        .get()
+    },
+
     findByScopeAndKeydate(reportScopeId: number, keydate: string) {
       return database
         .select()

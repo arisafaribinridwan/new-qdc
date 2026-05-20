@@ -40,6 +40,7 @@ export type ValidationRunSummary = {
     currentMonthRows: number
     duplicateLineKeys: number
     manualOverrideCount: number
+    invalidOverrideActionCount: number
     stagingCompare: Record<RawServiceStagingStatusCode, number>
   }
   aggregation: {
