@@ -215,7 +215,7 @@ Tujuan: preview dan Excel tidak punya logic hitung berbeda.
 - [x] Build report view model FQMS ringkas untuk Slice 0.
 - [x] Build report view model F-COST ringkas untuk Slice 0.
 - [x] Implement `GET /api/reports/view-model`.
-- [ ] Render preview dari view model yang sama.
+- [x] Render preview dari view model yang sama.
 - [x] Map FQMS view model ke `templates/excel/FQMS - LCD LOCAL.xlsx`.
 - [x] Map F-COST view model ke `templates/excel/FCOST - LCD LOCAL.xlsx`.
 - [x] Implement `POST /api/reports/export-excel`.
@@ -232,18 +232,18 @@ Gate Phase 6:
 
 Tujuan: user bisa menjalankan Slice 0 tanpa full CRUD.
 
-- [ ] Buat atau rapikan app layout utama secukupnya.
-- [ ] Buat Month/Scope page atau dashboard control untuk April 2026, LCD, LOCAL.
-- [ ] Buat Import Center untuk sales CSV dan raw service CSV.
-- [ ] Tampilkan import status, last imported month, row counts, warnings, anomaly count, exported status, dan replace/upsert status.
+- [x] Buat atau rapikan app layout utama secukupnya.
+- [x] Buat Month/Scope page atau dashboard control untuk April 2026, LCD, LOCAL.
+- [x] Buat Import Center untuk sales CSV dan raw service CSV.
+- [x] Tampilkan import status, last imported month, row counts, warnings, anomaly count, exported status, dan replace/upsert status.
 - [ ] Tampilkan preview compare saat upload raw service menemukan existing data.
-- [ ] Buat Review Anomalies untuk missing mapping/outlier/error rows.
+- [x] Buat Review Anomalies untuk missing mapping/outlier/error rows.
 - [ ] Tambahkan edit minimal dari Review Anomalies untuk unblock import.
-- [ ] Tambahkan raw line-level override untuk `symptom` dan `action`.
-- [ ] Tampilkan effective category/defect hasil master action setelah action dioverride.
-- [ ] Buat Validation Summary dengan filter blocking vs non-blocking.
-- [ ] Buat Report Preview/Export untuk FQMS + F-COST ringkas.
-- [ ] Hindari full `/models`, `/references`, dan `/targets` CRUD sampai Slice 0 lulus.
+- [x] Tambahkan raw line-level override untuk `symptom` dan `action`.
+- [x] Tampilkan effective category/defect hasil master action setelah action dioverride.
+- [x] Buat Validation Summary dengan filter blocking vs non-blocking.
+- [x] Buat Report Preview/Export untuk FQMS + F-COST ringkas.
+- [x] Hindari full `/models`, `/references`, dan `/targets` CRUD sampai Slice 0 lulus.
 
 Gate Phase 7:
 

@@ -68,3 +68,10 @@ export type ReportExportResult = {
     outputPath: string
   }>
 }
+
+export type ReportExportStatus = {
+  reportScopeId: number
+  exported: boolean
+  latestByType: Record<ReportExportType, typeof exportJobs.$inferSelect | null>
+  jobs: Array<typeof exportJobs.$inferSelect>
+}
