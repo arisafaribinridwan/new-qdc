@@ -54,6 +54,8 @@ defect_quality_level = NG jika avg_defect_ppm >= target_monthly_ppm, selain itu 
 
 Jika `sales = 0` atau `launching_period = 0`, jangan tampilkan angka PPM palsu. Tampilkan CHECK.
 
+Untuk presentasi Slice 0 di preview/export, angka PPM FQMS ditampilkan sebagai bilangan bulat dengan pembulatan ke atas. Nilai presisi tetap dipakai di view model untuk kalkulasi dan audit.
+
 ### 12.5 Section C — Detail Model
 
 Field utama per model:
@@ -85,6 +87,14 @@ total_avg_nondefect_ppm = total_nondefect / total_exposure × 1.000.000
 ```
 
 Total AVG defect PPM bukan average sederhana antar model. Denominator memakai total exposure `sales × launching_period`.
+
+Aturan export Excel Section C untuk template `FQMS - LCD LOCAL.xlsx`:
+
+- Model rows diurutkan dari `Launching Month` paling lama, lalu `Model`.
+- Report month pada header harus menampilkan bulan aktif report, misalnya scope `202604` tampil sebagai `Apr-26`.
+- Kolom numerik presentasi seperti `Launching Period`, `Sales`, `Defect`, `Non Defect`, `Total Claim`, `AVG Defect PPM`, `AVG Non Defect PPM`, `Target Monthly PPM`, dan helper exposure ditampilkan tanpa desimal dan dibulatkan ke atas.
+- Total row Section C memakai totals dari accumulated view model; cell `L37` dan `M37` dikosongkan karena target/quality level tidak berlaku untuk label total.
+- Label total `C37:E37` di-merge dengan fill `#31869B`, font Calibri 9, dan text putih agar mengikuti template referensi.
 
 ### 12.6 Section A — Quality Trend
 

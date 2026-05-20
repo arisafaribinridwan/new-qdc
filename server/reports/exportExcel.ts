@@ -138,7 +138,8 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
   const worksheet = getRequiredWorksheet(workbook, 'FQMS')
   worksheet.getCell('D3').value = `: ${viewModel.scope.productCode}`
   worksheet.getCell('D4').value = `: ${viewModel.scope.manufacturerCode}`
-  worksheet.getCell('R4').value = new Date(viewModel.scope.calendarYear, viewModel.scope.calendarMonth - 1, 1)
+  worksheet.getCell('R4').value = createExcelMonthDate(viewModel.scope.calendarYear, viewModel.scope.calendarMonth)
+  fillFqmsDetailModelSection(worksheet, viewModel)
 
   const summary = createSummaryWorksheet(workbook, 'QRCC Summary', [
     ['Report Month', viewModel.scope.monthLabel],
@@ -164,6 +165,138 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
   summary.getCell(14, 2).numFmt = '#,##0.000000'
   summary.getCell(15, 2).numFmt = '#,##0.000000'
   summary.getCell(16, 2).numFmt = '#,##0.000000'
+}
+
+function fillFqmsDetailModelSection(worksheet: ExcelJS.Worksheet, viewModel: ReportViewModel) {
+  const accumulated = viewModel.fqms?.accumulated
+
+  if (!accumulated) {
+    return
+  }
+
+  const modelStartRow = 23
+  const modelEndRow = 36
+  const totalRow = 37
+  const targetMonthlyPpm = readNumberCellValue(worksheet.getCell('L23').value)
+
+  const sortedRows = [...accumulated.rows].sort(compareFqmsAccumulatedRows)
+
+  for (let rowNumber = modelStartRow; rowNumber <= modelEndRow; rowNumber += 1) {
+    const model = sortedRows[rowNumber - modelStartRow]
+    clearFqmsDetailModelRow(worksheet, rowNumber)
+
+    if (!model) {
+      continue
+    }
+
+    const defectPpm = model.defectPpm ?? null
+    worksheet.getCell(`B${rowNumber}`).value = rowNumber - modelStartRow + 1
+    worksheet.getCell(`C${rowNumber}`).value = model.reportModelCode
+    worksheet.getCell(`D${rowNumber}`).value = model.launchingMonth ? monthKeyToDate(model.launchingMonth) : null
+    worksheet.getCell(`E${rowNumber}`).value = roundedNumber(model.launchingPeriod)
+    worksheet.getCell(`F${rowNumber}`).value = roundedNumber(model.accumulatedSales)
+    worksheet.getCell(`G${rowNumber}`).value = roundedNumber(model.defectQty)
+    worksheet.getCell(`H${rowNumber}`).value = roundedNumber(model.nonDefectQty)
+    worksheet.getCell(`I${rowNumber}`).value = roundedNumber(model.totalClaimQty)
+    worksheet.getCell(`J${rowNumber}`).value = roundedNumber(defectPpm)
+    worksheet.getCell(`K${rowNumber}`).value = roundedNumber(model.nonDefectPpm)
+    worksheet.getCell(`L${rowNumber}`).value = roundedNumber(targetMonthlyPpm)
+    worksheet.getCell(`M${rowNumber}`).value = getDefectQualityLevel(defectPpm, targetMonthlyPpm)
+    worksheet.getCell(`N${rowNumber}`).value = roundedNumber(model.exposure)
+    applyFqmsDetailNumberFormats(worksheet, rowNumber)
+  }
+
+  clearFqmsDetailModelRow(worksheet, totalRow)
+  worksheet.getCell(`C${totalRow}`).value = 'TOTAL'
+  worksheet.getCell(`F${totalRow}`).value = roundedNumber(accumulated.totals.accumulatedSales)
+  worksheet.getCell(`G${totalRow}`).value = roundedNumber(accumulated.totals.defectQty)
+  worksheet.getCell(`H${totalRow}`).value = roundedNumber(accumulated.totals.nonDefectQty)
+  worksheet.getCell(`I${totalRow}`).value = roundedNumber(accumulated.totals.totalClaimQty)
+  worksheet.getCell(`J${totalRow}`).value = roundedNumber(accumulated.totals.defectPpm)
+  worksheet.getCell(`K${totalRow}`).value = roundedNumber(accumulated.totals.nonDefectPpm)
+  worksheet.getCell(`N${totalRow}`).value = roundedNumber(accumulated.totals.exposure)
+  applyFqmsDetailNumberFormats(worksheet, totalRow)
+  styleFqmsDetailTotalLabel(worksheet)
+}
+
+function clearFqmsDetailModelRow(worksheet: ExcelJS.Worksheet, rowNumber: number) {
+  for (const column of ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N']) {
+    worksheet.getCell(`${column}${rowNumber}`).value = null
+  }
+}
+
+function applyFqmsDetailNumberFormats(worksheet: ExcelJS.Worksheet, rowNumber: number) {
+  worksheet.getCell(`D${rowNumber}`).numFmt = 'mmm-yy'
+
+  for (const column of ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'N']) {
+    worksheet.getCell(`${column}${rowNumber}`).numFmt = '#,##0'
+  }
+}
+
+function styleFqmsDetailTotalLabel(worksheet: ExcelJS.Worksheet) {
+  if (!worksheet.model.merges.includes('C37:E37')) {
+    worksheet.mergeCells('C37:E37')
+  }
+
+  const cell = worksheet.getCell('C37')
+  cell.value = 'TOTAL'
+  cell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF31869B' }
+  }
+  cell.font = {
+    name: 'Calibri',
+    size: 9,
+    color: { argb: 'FFFFFFFF' }
+  }
+  cell.alignment = { horizontal: 'center', vertical: 'middle' }
+}
+
+function readNumberCellValue(value: ExcelJS.CellValue) {
+  if (typeof value === 'number') {
+    return value
+  }
+
+  if (value && typeof value === 'object' && 'result' in value && typeof value.result === 'number') {
+    return value.result
+  }
+
+  return null
+}
+
+function getDefectQualityLevel(defectPpm: number | null, targetMonthlyPpm: number | null) {
+  if (defectPpm == null || targetMonthlyPpm == null) {
+    return 'CHECK'
+  }
+
+  return defectPpm < targetMonthlyPpm ? 'OK' : 'NG'
+}
+
+function roundedNumber(value: number | null) {
+  return value == null ? null : Math.ceil(value)
+}
+
+type FqmsAccumulatedModelRow = NonNullable<NonNullable<ReportViewModel['fqms']>['accumulated']>['rows'][number]
+
+function compareFqmsAccumulatedRows(left: FqmsAccumulatedModelRow, right: FqmsAccumulatedModelRow) {
+  return monthSortValue(left.launchingMonth) - monthSortValue(right.launchingMonth)
+    || left.reportModelCode.localeCompare(right.reportModelCode)
+}
+
+function monthSortValue(monthKey: string | null) {
+  return monthKey ? Number(monthKey.replace('-', '')) : Number.MAX_SAFE_INTEGER
+}
+
+function monthKeyToDate(monthKey: string) {
+  const [yearText, monthText] = monthKey.includes('-')
+    ? monthKey.split('-')
+    : [monthKey.slice(0, 4), monthKey.slice(4, 6)]
+  return createExcelMonthDate(Number(yearText), Number(monthText ?? 1))
+}
+
+function createExcelMonthDate(year: number, month: number) {
+  return new Date(Date.UTC(year, month - 1, 1, 12))
 }
 
 function fillFcostTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel) {
