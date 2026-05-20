@@ -175,6 +175,8 @@ Catatan status untuk lanjut kerja di PC lain:
 - [x] Cross-check `total_cost` vs parts/labor/transportation cost jika field tersedia.
 - [x] Buat proof script/service untuk April 2026 LCD LOCAL.
 - [x] Buat proof FQMS akumulasi April 2026 dari sales akumulasi dan workbook monitoring per model.
+- [x] Persist proof FQMS akumulasi April 2026 per model ke SQLite untuk dipakai service/view model.
+- [x] Build reusable FQMS accumulated service yang menghitung exposure dan PPM dari persisted rows + master `fqms_model_series`.
 - [x] Bandingkan FQMS quantity/count terhadap referensi Excel/PDF.
 - [x] Bandingkan F-COST amount terhadap referensi Excel/PDF.
 - [x] Catat mismatch sebagai blocking issue sebelum UI polish.
@@ -224,9 +226,11 @@ Gate Phase 5:
 Tujuan: preview dan Excel tidak punya logic hitung berbeda.
 
 - [x] Build report view model FQMS ringkas untuk Slice 0.
+- [x] Build report view model FQMS akumulasi untuk Slice 0 dari data historis/akumulasi SQLite.
 - [x] Build report view model F-COST ringkas untuk Slice 0.
 - [x] Implement `GET /api/reports/view-model`.
 - [x] Render preview dari view model yang sama.
+- [x] Gunakan FQMS accumulated view model untuk preview/export summary saat data akumulasi tersedia, dengan monthly summary sebagai fallback.
 - [x] Map FQMS view model ke `templates/excel/FQMS - LCD LOCAL.xlsx`.
 - [x] Map F-COST view model ke `templates/excel/FCOST - LCD LOCAL.xlsx`.
 - [x] Implement `POST /api/reports/export-excel`.
@@ -323,5 +327,5 @@ Jangan mulai phase ini sebelum gate Slice 0 lulus.
 - [x] Row `job_sheet_section = 0` tidak wajib punya action/category/defect untuk FQMS dan tidak boleh membuat Review Anomalies FQMS ramai.
 - [x] `ACTION_UNCLASSIFIED` hanya berarti row FQMS-impact punya action kosong atau action tidak ditemukan di master action.
 - [x] PPM FQMS Slice 0 dibulatkan ke atas ke bilangan bulat.
-- [x] Preview/export saat ini masih monthly summary dari SQLite; desain akumulasi FQMS final perlu service/view model historis, tidak cukup hanya import bulan sebelumnya ke summary bulanan.
-- [x] Buat master model-series FQMS final per product/manufacturer/month. Aggregation, validation, dan Review Anomalies memakai master model-series, bukan baseline sales bulan berjalan.
+- [x] Preview/export FQMS memakai accumulated view model historis saat rows akumulasi tersedia; monthly summary tetap fallback.
+- [x] Buat master model-series FQMS final per product/manufacturer/month. Aggregation, validation, Review Anomalies, dan accumulated view model memakai master model-series, bukan baseline sales bulan berjalan.

@@ -76,6 +76,26 @@ export const fqmsModelSeries = sqliteTable('fqms_model_series', {
   index('fqms_model_series_report_model_idx').on(table.productId, table.manufacturerId, table.reportModelCode)
 ])
 
+export const fqmsAccumulatedModelRows = sqliteTable('fqms_accumulated_model_rows', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  reportScopeId: integer('report_scope_id').notNull().references(() => reportScopes.id, { onDelete: 'cascade' }),
+  sourceModelCode: text('source_model_code').notNull(),
+  reportModelCode: text('report_model_code').notNull(),
+  monitoringFile: text('monitoring_file'),
+  launchingMonth: text('launching_month').notNull(),
+  launchingPeriod: integer('launching_period').notNull(),
+  accumulatedSales: integer('accumulated_sales').notNull().default(0),
+  defectQty: integer('defect_qty').notNull().default(0),
+  nonDefectQty: integer('non_defect_qty').notNull().default(0),
+  totalClaimQty: integer('total_claim_qty').notNull().default(0),
+  sourceJson: text('source_json'),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, table => [
+  uniqueIndex('fqms_accumulated_model_rows_scope_source_unique').on(table.reportScopeId, table.sourceModelCode),
+  index('fqms_accumulated_model_rows_scope_report_model_idx').on(table.reportScopeId, table.reportModelCode)
+])
+
 export const dataImports = sqliteTable('data_imports', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   reportScopeId: integer('report_scope_id').notNull().references(() => reportScopes.id, { onDelete: 'cascade' }),
