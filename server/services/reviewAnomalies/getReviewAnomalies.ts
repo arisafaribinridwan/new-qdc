@@ -1,12 +1,13 @@
 import { getDb } from '../../db/client'
 import {
   createFactoryMappingsRepository,
+  createFqmsModelSeriesRepository,
   createMasterActionsRepository,
-  createRawSalesRowsRepository,
   createRawServiceLineOverridesRepository,
   createRawServiceRowsRepository,
   createScopesRepository
 } from '../../repositories'
+import { createActiveFqmsModelCodes, matchesActiveFqmsModel } from '../fqmsModelSeries'
 import { normalizeCode } from '../imports/normalizers'
 import { resolveImportScope } from '../imports/validators'
 import { ReviewAnomaliesNotFoundError } from './errors'
@@ -45,9 +46,11 @@ export function getReviewAnomalies(input: ReviewAnomaliesScopeInput = {}): Revie
     masterActions.map(action => [normalizeCode(action.action), action])
   )
   const activeFqmsModelCodes = createActiveFqmsModelCodes(
-    createRawSalesRowsRepository(database)
-      .findByReportScopeId(scopeResult.scope.id)
-      .filter(row => row.salesMonth === scopeInput.monthKey)
+    createFqmsModelSeriesRepository(database).listActiveByScope(
+      scopeResult.product.id,
+      scopeResult.manufacturer.id,
+      scopeInput.monthKey
+    )
   )
   const rows = createRawServiceRowsRepository(database)
     .findByReportScopeId(scopeResult.scope.id)
@@ -155,6 +158,10 @@ export function toReviewAnomalyItem(
       source: source.defect,
       effective: effectiveDefect
     },
+    impact: {
+      fqms: isFqmsImpact,
+      fcost: source.totalCost !== 0
+    },
     issueCodes
   }
 }
@@ -196,21 +203,15 @@ function filterItemsByImpact(items: ReviewAnomalyItem[], impactFilter: ReviewImp
 }
 
 function isFqmsImpactItem(item: ReviewAnomalyItem) {
-  return item.source.jobSheetSection === claimJobSheetSection
+  return item.impact.fqms
 }
 
 function isFcostImpactItem(item: ReviewAnomalyItem) {
-  return item.source.totalCost !== 0
+  return item.impact.fcost
 }
 
 function getReviewImpactFilter(value: string | undefined): ReviewImpactFilter {
   return value === 'fqms' || value === 'fcost' || value === 'all' ? value : 'all'
-}
-
-function createActiveFqmsModelCodes(rows: Array<{ modelCode: string | null }>) {
-  return new Set(rows
-    .map(row => normalizeNullableCode(row.modelCode))
-    .filter((modelCode): modelCode is string => Boolean(modelCode)))
 }
 
 function isFqmsImpactSource(
@@ -221,8 +222,7 @@ function isFqmsImpactSource(
     return false
   }
 
-  const modelCode = normalizeNullableCode(source.modelCode)
-  return !modelCode || activeFqmsModelCodes.size === 0 || activeFqmsModelCodes.has(modelCode)
+  return matchesActiveFqmsModel(source.modelCode, activeFqmsModelCodes)
 }
 
 function shouldFlagUnclassifiedFqmsAction(action: string | null, classification: MasterAction | undefined) {

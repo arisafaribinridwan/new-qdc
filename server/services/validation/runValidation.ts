@@ -2,6 +2,7 @@ import { getDb } from '../../db/client'
 import {
   createFactoryMappingsRepository,
   createFcostSummariesRepository,
+  createFqmsModelSeriesRepository,
   createFqmsSummariesRepository,
   createImportsRepository,
   createMasterActionsRepository,
@@ -11,6 +12,7 @@ import {
   createScopesRepository,
   createValidationRunsRepository
 } from '../../repositories'
+import { createActiveFqmsModelCodes, matchesActiveFqmsModel } from '../fqmsModelSeries'
 import { importTypes } from '../imports/constants'
 import { resolveImportScope } from '../imports/validators'
 import { buildEffectiveRawServiceRows } from '../rawService'
@@ -29,6 +31,7 @@ type RawSalesRow = ReturnType<ReturnType<typeof createRawSalesRowsRepository>['f
 type RawServiceRow = ReturnType<ReturnType<typeof createRawServiceRowsRepository>['findByReportScopeId']>[number]
 type RawServiceLineOverride = ReturnType<ReturnType<typeof createRawServiceLineOverridesRepository>['listByReportScopeId']>[number]
 type MasterAction = ReturnType<ReturnType<typeof createMasterActionsRepository>['listAll']>[number]
+type FqmsModelSeries = ReturnType<ReturnType<typeof createFqmsModelSeriesRepository>['listActiveByScope']>[number]
 type DataImport = ReturnType<ReturnType<typeof createImportsRepository>['findLatestByScopeAndType']>
 
 const claimJobSheetSection = 1
@@ -61,6 +64,7 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
     const mappingsRepository = createFactoryMappingsRepository(tx)
     const overridesRepository = createRawServiceLineOverridesRepository(tx)
     const masterActionsRepository = createMasterActionsRepository(tx)
+    const fqmsModelSeriesRepository = createFqmsModelSeriesRepository(tx)
     const fqmsRepository = createFqmsSummariesRepository(tx)
     const fcostRepository = createFcostSummariesRepository(tx)
     const validationRepository = createValidationRunsRepository(tx)
@@ -85,6 +89,12 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
       scopeInput.monthKey
     )
     const activeFactoryCodes = new Set(activeMappings.map(mapping => mapping.factoryCode))
+    const activeFqmsModelSeries = fqmsModelSeriesRepository.listActiveByScope(
+      scopeResult.product.id,
+      scopeResult.manufacturer.id,
+      scopeInput.monthKey
+    )
+    const activeFqmsModelCodes = createActiveFqmsModelCodes(activeFqmsModelSeries)
     const rawServiceStagingCompare = summarizeRawServiceStagingCompare(rawServiceImport)
     const fqms = fqmsRepository.findByReportScopeId(reportScopeId)
     const fcost = fcostRepository.findByReportScopeId(reportScopeId)
@@ -94,13 +104,14 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
     issues.push(...validateHeaderResult(salesImport, 'sales'))
     issues.push(...validateHeaderResult(rawServiceImport, 'raw_service'))
     issues.push(...validateReportMonthConsistency(salesRows, serviceRows, scopeInput.monthKey))
+    issues.push(...validateFqmsModelSeries(activeFqmsModelSeries))
     issues.push(...validateMappingCompleteness(currentSalesRows, currentServiceRows, activeFactoryCodes))
     issues.push(...validateReimportSafety(salesImport, rawServiceImport, currentServiceRows))
     issues.push(...validateRawServiceStagingCompare(rawServiceStagingCompare))
     issues.push(...validateRawServiceOverrideContinuity(currentServiceRows, manualOverrides))
     issues.push(...validateRawServiceOverrideActions(manualOverrides, masterActions))
     issues.push(...validateDenominator(fqms))
-    issues.push(...validateFqmsTotal(fqms, currentEffectiveServiceRows, currentSalesRows))
+    issues.push(...validateFqmsTotal(fqms, currentEffectiveServiceRows, activeFqmsModelCodes))
     issues.push(...validateFcostTotal(fcost, currentServiceRows))
 
     const counts = countIssues(issues)
@@ -123,6 +134,7 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
       aggregation: {
         salesQuantity: fqms?.salesQuantity ?? null,
         fqmsClaimQuantity: fqms?.claimQuantity ?? null,
+        fqmsModelSeriesRows: activeFqmsModelSeries.length,
         fcostTotalRupiah: fcost?.totalCostRupiah ?? null
       }
     }
@@ -242,6 +254,19 @@ function validateReportMonthConsistency(
   }
 
   return issues
+}
+
+function validateFqmsModelSeries(activeFqmsModelSeries: FqmsModelSeries[]): ValidationIssueInput[] {
+  if (activeFqmsModelSeries.length > 0) {
+    return []
+  }
+
+  return [{
+    code: 'FQMS_MODEL_SERIES_MISSING',
+    severity: 'critical',
+    reason: 'No active FQMS model-series master rows exist for the selected product, scope, and report month.',
+    relatedPage: '/validation'
+  }]
 }
 
 function validateMappingCompleteness(
@@ -519,14 +544,13 @@ function rawServiceCompareIssue(
 function validateFqmsTotal(
   fqms: ReturnType<ReturnType<typeof createFqmsSummariesRepository>['findByReportScopeId']>,
   serviceRows: EffectiveRawServiceRow[],
-  salesRows: RawSalesRow[]
+  activeFqmsModelCodes: Set<string>
 ): ValidationIssueInput[] {
   if (!fqms) {
     return []
   }
 
   const issues: ValidationIssueInput[] = []
-  const activeFqmsModelCodes = createActiveFqmsModelCodes(salesRows)
   const fqmsCandidateRows = serviceRows.filter(row => isFqmsCandidateRow(row, activeFqmsModelCodes))
   const claimRows = fqmsCandidateRows.filter(isFqmsReportableClaimRow)
   const effectiveDefectStatusCounts = countEffectiveDefectStatuses(claimRows)
@@ -675,19 +699,12 @@ function countEffectiveDefectStatuses(rows: EffectiveRawServiceRow[]) {
   }, {})
 }
 
-function createActiveFqmsModelCodes(rows: Array<{ modelCode: string | null }>) {
-  return new Set(rows
-    .map(row => normalizeModelCode(row.modelCode))
-    .filter((modelCode): modelCode is string => Boolean(modelCode)))
-}
-
 function isFqmsCandidateRow(row: EffectiveRawServiceRow, activeFqmsModelCodes: Set<string>) {
   if (row.jobSheetSection !== claimJobSheetSection) {
     return false
   }
 
-  const modelCode = normalizeModelCode(row.modelCode)
-  return !modelCode || activeFqmsModelCodes.size === 0 || activeFqmsModelCodes.has(modelCode)
+  return matchesActiveFqmsModel(row.modelCode, activeFqmsModelCodes)
 }
 
 function isFqmsReportableClaimRow(row: EffectiveRawServiceRow) {
@@ -712,11 +729,6 @@ function normalizeDefectStatus(value: string | null) {
 function normalizeRequiredFqmsValue(value: string | null) {
   const normalized = (value ?? '').trim().toUpperCase()
   return normalized && normalized !== 'N/A' ? normalized : null
-}
-
-function normalizeModelCode(value: string | null) {
-  const normalized = (value ?? '').trim().toUpperCase()
-  return normalized.length > 0 ? normalized : null
 }
 
 function normalizeActionKey(action: string) {

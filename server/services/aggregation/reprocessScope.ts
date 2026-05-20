@@ -1,11 +1,13 @@
 import { getDb } from '../../db/client'
 import {
   createFcostSummariesRepository,
+  createFqmsModelSeriesRepository,
   createFqmsSummariesRepository,
   createImportsRepository,
   createRawSalesRowsRepository,
   createScopesRepository
 } from '../../repositories'
+import { createActiveFqmsModelCodes, matchesActiveFqmsModel } from '../fqmsModelSeries'
 import { importTypes } from '../imports/constants'
 import { resolveImportScope } from '../imports/validators'
 import { listEffectiveRawServiceRowsByScopeId } from '../rawService'
@@ -37,6 +39,7 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
   return database.transaction((tx) => {
     const importsRepository = createImportsRepository(tx)
     const rawSalesRowsRepository = createRawSalesRowsRepository(tx)
+    const fqmsModelSeriesRepository = createFqmsModelSeriesRepository(tx)
     const fqmsSummariesRepository = createFqmsSummariesRepository(tx)
     const fcostSummariesRepository = createFcostSummariesRepository(tx)
 
@@ -47,9 +50,14 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
       .filter(row => row.salesMonth === scopeInput.monthKey)
     const serviceRows = listEffectiveRawServiceRowsByScopeId(scopeResult.scope.id, tx)
       .filter(row => row.keydate === scopeInput.monthKey)
+    const activeFqmsModelSeries = fqmsModelSeriesRepository.listActiveByScope(
+      scopeResult.product.id,
+      scopeResult.manufacturer.id,
+      scopeInput.monthKey
+    )
 
     const salesQuantity = sumBy(salesRows, row => row.quantity)
-    const activeFqmsModelCodes = createActiveFqmsModelCodes(salesRows)
+    const activeFqmsModelCodes = createActiveFqmsModelCodes(activeFqmsModelSeries)
     const fqmsCandidateRows = serviceRows.filter(row => isFqmsCandidateRow(row, activeFqmsModelCodes))
     const claimRows = fqmsCandidateRows.filter(isFqmsReportableClaimRow)
     const defectStatusCounts = countDefectStatuses(claimRows)
@@ -61,6 +69,7 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
     const fqmsDetails: FqmsAggregationDetails = {
       monthKey: scopeInput.monthKey,
       salesRows: salesRows.length,
+      masterModelSeriesRows: activeFqmsModelSeries.length,
       claimRows: claimRows.length,
       ignoredServiceRows: serviceRows.length - fqmsCandidateRows.length,
       unclassifiedClaimRows,
@@ -154,19 +163,12 @@ function countDefectStatuses(rows: EffectiveRawServiceRow[]) {
   }, {})
 }
 
-function createActiveFqmsModelCodes(rows: Array<{ modelCode: string | null }>) {
-  return new Set(rows
-    .map(row => normalizeModelCode(row.modelCode))
-    .filter((modelCode): modelCode is string => Boolean(modelCode)))
-}
-
 function isFqmsCandidateRow(row: EffectiveRawServiceRow, activeFqmsModelCodes: Set<string>) {
   if (row.jobSheetSection !== claimJobSheetSection) {
     return false
   }
 
-  const modelCode = normalizeModelCode(row.modelCode)
-  return !modelCode || activeFqmsModelCodes.size === 0 || activeFqmsModelCodes.has(modelCode)
+  return matchesActiveFqmsModel(row.modelCode, activeFqmsModelCodes)
 }
 
 function isFqmsReportableClaimRow(row: EffectiveRawServiceRow) {
@@ -192,9 +194,3 @@ function normalizeRequiredFqmsValue(value: string | null) {
   const normalized = (value ?? '').trim().toUpperCase()
   return normalized && normalized !== 'N/A' ? normalized : null
 }
-
-function normalizeModelCode(value: string | null) {
-  const normalized = (value ?? '').trim().toUpperCase()
-  return normalized.length > 0 ? normalized : null
-}
-

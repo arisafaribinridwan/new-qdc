@@ -3,12 +3,13 @@ import { z } from 'zod'
 import { getDb } from '../../db/client'
 import {
   createFactoryMappingsRepository,
+  createFqmsModelSeriesRepository,
   createMasterActionsRepository,
-  createRawSalesRowsRepository,
   createRawServiceLineOverridesRepository,
   createRawServiceRowsRepository,
   createScopesRepository
 } from '../../repositories'
+import { createActiveFqmsModelCodes } from '../fqmsModelSeries'
 import { normalizeCode } from '../imports/normalizers'
 import { resolveImportScope } from '../imports/validators'
 import { ReviewAnomaliesError, ReviewAnomaliesNotFoundError } from './errors'
@@ -96,12 +97,12 @@ export function saveRawServiceOverride(input: RawServiceOverrideInput = {}): Raw
     scopeInput.monthKey
   )
   const activeFactoryCodes = new Set(activeMappings.map(mapping => mapping.factoryCode))
-  const activeFqmsModelCodes = new Set(
-    createRawSalesRowsRepository(database)
-      .findByReportScopeId(scopeResult.scope.id)
-      .filter(salesRow => salesRow.salesMonth === scopeInput.monthKey)
-      .map(salesRow => normalizeNullableCode(salesRow.modelCode))
-      .filter((modelCode): modelCode is string => Boolean(modelCode))
+  const activeFqmsModelCodes = createActiveFqmsModelCodes(
+    createFqmsModelSeriesRepository(database).listActiveByScope(
+      scopeResult.product.id,
+      scopeResult.manufacturer.id,
+      scopeInput.monthKey
+    )
   )
 
   return {

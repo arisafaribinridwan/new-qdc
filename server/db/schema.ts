@@ -56,6 +56,26 @@ export const factoryMappings = sqliteTable('factory_mappings', {
   index('factory_mappings_scope_idx').on(table.productId, table.manufacturerId)
 ])
 
+export const fqmsModelSeries = sqliteTable('fqms_model_series', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  manufacturerId: integer('manufacturer_id').notNull().references(() => manufacturers.id, { onDelete: 'cascade' }),
+  factoryCode: text('factory_code').notNull(),
+  modelCode: text('model_code').notNull(),
+  reportModelCode: text('report_model_code').notNull(),
+  launchingMonth: text('launching_month').notNull(),
+  validFromMonth: text('valid_from_month').notNull(),
+  validToMonth: text('valid_to_month'),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  notes: text('notes'),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, table => [
+  uniqueIndex('fqms_model_series_scope_factory_model_unique').on(table.productId, table.manufacturerId, table.factoryCode, table.modelCode),
+  index('fqms_model_series_scope_period_idx').on(table.productId, table.manufacturerId, table.validFromMonth, table.validToMonth),
+  index('fqms_model_series_report_model_idx').on(table.productId, table.manufacturerId, table.reportModelCode)
+])
+
 export const dataImports = sqliteTable('data_imports', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   reportScopeId: integer('report_scope_id').notNull().references(() => reportScopes.id, { onDelete: 'cascade' }),
