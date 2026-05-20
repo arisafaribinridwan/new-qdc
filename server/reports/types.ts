@@ -1,4 +1,5 @@
 import type { exportJobs } from '../db/schema'
+import type { FqmsAccumulatedReportViewModel } from '../services/fqmsAccumulated'
 import type { ValidationRunResult } from '../services/validation'
 
 export type ReportScopeInput = {
@@ -27,6 +28,7 @@ export type ReportViewModel = {
     rawServiceImportId: number | null
   }
   fqms: {
+    source: 'accumulated' | 'monthly_summary'
     status: 'ok' | 'check'
     salesQuantity: number
     claimQuantity: number
@@ -36,6 +38,18 @@ export type ReportViewModel = {
     ppm: number | null
     denominatorStatus: 'ok' | 'missing_or_zero'
     computedAt: string
+    accumulated: FqmsAccumulatedReportViewModel | null
+    monthly: {
+      status: 'ok' | 'check'
+      salesQuantity: number
+      claimQuantity: number
+      defectCount: number
+      nonDefectCount: number
+      unclassifiedClaimRows: number
+      ppm: number | null
+      denominatorStatus: 'ok' | 'missing_or_zero'
+      computedAt: string
+    } | null
   } | null
   fcost: {
     status: 'ok' | 'check'

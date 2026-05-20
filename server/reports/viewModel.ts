@@ -5,6 +5,7 @@ import {
   createImportsRepository,
   createScopesRepository
 } from '../repositories'
+import { getFqmsAccumulatedReportViewModel } from '../services/fqmsAccumulated'
 import { importTypes } from '../services/imports/constants'
 import { resolveImportScope } from '../services/imports/validators'
 import { ReportNotFoundError } from './errors'
@@ -44,6 +45,49 @@ export function getReportViewModel(input: ReportScopeInput = {}): ReportViewMode
   const rawServiceImport = importsRepository.findLatestByScopeAndType(scopeResult.scope.id, importTypes.rawService)
   const fqmsDetails = parseJsonObject<FqmsDetails>(fqms?.summaryJson)
   const fcostDetails = parseJsonObject<FcostDetails>(fcost?.summaryJson)
+  const monthlyFqms = fqms
+    ? {
+        status: fqms.status,
+        salesQuantity: fqms.salesQuantity,
+        claimQuantity: fqms.claimQuantity,
+        defectCount: fqms.defectCount,
+        nonDefectCount: fqms.nonDefectCount,
+        unclassifiedClaimRows: Number(fqmsDetails.unclassifiedClaimRows ?? Math.max(fqms.claimQuantity - fqms.defectCount - fqms.nonDefectCount, 0)),
+        ppm: typeof fqmsDetails.ppm === 'number' ? fqmsDetails.ppm : null,
+        denominatorStatus: fqmsDetails.denominatorStatus ?? (fqms.salesQuantity > 0 ? 'ok' : 'missing_or_zero'),
+        computedAt: fqms.computedAt
+      }
+    : null
+  const accumulatedFqms = getFqmsAccumulatedReportViewModel({
+    reportScopeId: scopeResult.scope.id,
+    productId: scopeResult.product.id,
+    manufacturerId: scopeResult.manufacturer.id,
+    monthKey: scopeInput.monthKey,
+    db: database
+  })
+  const reportFqms = accumulatedFqms
+    ? {
+        source: 'accumulated' as const,
+        status: accumulatedFqms.status,
+        salesQuantity: accumulatedFqms.totals.accumulatedSales,
+        claimQuantity: accumulatedFqms.totals.totalClaimQty,
+        defectCount: accumulatedFqms.totals.defectQty,
+        nonDefectCount: accumulatedFqms.totals.nonDefectQty,
+        unclassifiedClaimRows: 0,
+        ppm: accumulatedFqms.totals.totalPpm == null ? null : Math.ceil(accumulatedFqms.totals.totalPpm),
+        denominatorStatus: accumulatedFqms.totals.denominatorStatus,
+        computedAt: accumulatedFqms.computedAt,
+        accumulated: accumulatedFqms,
+        monthly: monthlyFqms
+      }
+    : monthlyFqms
+      ? {
+          source: 'monthly_summary' as const,
+          ...monthlyFqms,
+          accumulated: null,
+          monthly: monthlyFqms
+        }
+      : null
 
   return {
     reportScopeId: scopeResult.scope.id,
@@ -64,19 +108,7 @@ export function getReportViewModel(input: ReportScopeInput = {}): ReportViewMode
       salesImportId: salesImport?.id ?? null,
       rawServiceImportId: rawServiceImport?.id ?? null
     },
-    fqms: fqms
-      ? {
-          status: fqms.status,
-          salesQuantity: fqms.salesQuantity,
-          claimQuantity: fqms.claimQuantity,
-          defectCount: fqms.defectCount,
-          nonDefectCount: fqms.nonDefectCount,
-          unclassifiedClaimRows: Number(fqmsDetails.unclassifiedClaimRows ?? Math.max(fqms.claimQuantity - fqms.defectCount - fqms.nonDefectCount, 0)),
-          ppm: typeof fqmsDetails.ppm === 'number' ? fqmsDetails.ppm : null,
-          denominatorStatus: fqmsDetails.denominatorStatus ?? (fqms.salesQuantity > 0 ? 'ok' : 'missing_or_zero'),
-          computedAt: fqms.computedAt
-        }
-      : null,
+    fqms: reportFqms,
     fcost: fcost
       ? {
           status: fcost.status,

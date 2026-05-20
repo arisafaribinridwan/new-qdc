@@ -144,6 +144,7 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
     ['Report Month', viewModel.scope.monthLabel],
     ['Product', viewModel.scope.productCode],
     ['Manufacturer', viewModel.scope.manufacturerCode],
+    ['FQMS Source', viewModel.fqms?.source ?? 'missing'],
     ['FQMS Status', viewModel.fqms?.status ?? 'missing'],
     ['Sales Quantity', viewModel.fqms?.salesQuantity ?? null],
     ['Claim Quantity', viewModel.fqms?.claimQuantity ?? null],
@@ -151,10 +152,18 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
     ['Non Defect Count', viewModel.fqms?.nonDefectCount ?? null],
     ['Unclassified Claim Rows', viewModel.fqms?.unclassifiedClaimRows ?? null],
     ['PPM', viewModel.fqms?.ppm ?? null],
+    ['Accumulated Exposure', viewModel.fqms?.accumulated?.totals.exposure ?? null],
+    ['Accumulated Defect PPM', viewModel.fqms?.accumulated?.totals.defectPpm ?? null],
+    ['Accumulated Non Defect PPM', viewModel.fqms?.accumulated?.totals.nonDefectPpm ?? null],
+    ['Accumulated Total PPM', viewModel.fqms?.accumulated?.totals.totalPpm ?? null],
+    ['Accumulated Active Models', viewModel.fqms?.accumulated?.activeReportModelCount ?? null],
     ['Computed At', viewModel.fqms?.computedAt ?? null]
   ])
 
   summary.getColumn(2).numFmt = '#,##0'
+  summary.getCell(14, 2).numFmt = '#,##0.000000'
+  summary.getCell(15, 2).numFmt = '#,##0.000000'
+  summary.getCell(16, 2).numFmt = '#,##0.000000'
 }
 
 function fillFcostTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel) {
