@@ -13,7 +13,7 @@ import type { ReviewAnomaliesResult, ReviewAnomaliesScopeInput, ReviewAnomalyCod
 
 type RawServiceRow = ReturnType<ReturnType<typeof createRawServiceRowsRepository>['findByReportScopeId']>[number]
 type RawServiceLineOverride = ReturnType<ReturnType<typeof createRawServiceLineOverridesRepository>['listByReportScopeId']>[number]
-type MasterAction = ReturnType<ReturnType<typeof createMasterActionsRepository>['listActive']>[number]
+type MasterAction = ReturnType<ReturnType<typeof createMasterActionsRepository>['listAll']>[number]
 
 export function getReviewAnomalies(input: ReviewAnomaliesScopeInput = {}): ReviewAnomaliesResult {
   const scopeInput = resolveImportScope(input)
@@ -36,7 +36,7 @@ export function getReviewAnomalies(input: ReviewAnomaliesScopeInput = {}): Revie
   const activeFactoryCodes = new Set(activeMappings.map(mapping => mapping.factoryCode))
   const overrides = createRawServiceLineOverridesRepository(database).listByReportScopeId(scopeResult.scope.id)
   const overridesByLineKey = new Map(overrides.map(override => [override.lineKey, override]))
-  const masterActions = createMasterActionsRepository(database).listActive()
+  const masterActions = createMasterActionsRepository(database).listAll()
   const actionClassificationByAction = new Map(
     masterActions.map(action => [normalizeCode(action.action), action])
   )
@@ -70,8 +70,8 @@ export function toReviewAnomalyItem(
   const effectiveAction = normalizeNullableCode(override?.overrideAction) ?? source.action
   const effectiveSymptom = normalizeNullableText(override?.overrideSymptom) ?? source.symptomName
   const effectiveClassification = effectiveAction ? actionClassificationByAction.get(normalizeCode(effectiveAction)) : undefined
-  const effectiveDefectCategory = effectiveClassification?.category ?? source.defectCategory
-  const effectiveDefect = effectiveClassification?.defect ?? source.defect
+  const effectiveDefectCategory = effectiveClassification?.category ?? null
+  const effectiveDefect = effectiveClassification?.defect ?? null
   const issueCodes: ReviewAnomalyCode[] = []
 
   if (!source.modelCode) {

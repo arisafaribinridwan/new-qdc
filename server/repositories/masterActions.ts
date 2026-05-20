@@ -23,6 +23,14 @@ export function createMasterActionsRepository(db?: RepositoryDb) {
         .get()
     },
 
+    listAll() {
+      return database
+        .select()
+        .from(masterActions)
+        .orderBy(masterActions.action)
+        .all()
+    },
+
     listActive() {
       return database
         .select()

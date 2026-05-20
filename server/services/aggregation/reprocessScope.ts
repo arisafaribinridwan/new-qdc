@@ -4,11 +4,11 @@ import {
   createFqmsSummariesRepository,
   createImportsRepository,
   createRawSalesRowsRepository,
-  createRawServiceRowsRepository,
   createScopesRepository
 } from '../../repositories'
 import { importTypes } from '../imports/constants'
 import { resolveImportScope } from '../imports/validators'
+import { listEffectiveRawServiceRowsByScopeId } from '../rawService'
 import { AggregationNotFoundError } from './errors'
 import type {
   AggregationResult,
@@ -16,8 +16,7 @@ import type {
   FcostAggregationDetails,
   FqmsAggregationDetails
 } from './types'
-
-type RawServiceRow = ReturnType<ReturnType<typeof createRawServiceRowsRepository>['findByReportScopeId']>[number]
+import type { EffectiveRawServiceRow } from '../rawService'
 
 const claimJobSheetSection = 1
 
@@ -38,7 +37,6 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
   return database.transaction((tx) => {
     const importsRepository = createImportsRepository(tx)
     const rawSalesRowsRepository = createRawSalesRowsRepository(tx)
-    const rawServiceRowsRepository = createRawServiceRowsRepository(tx)
     const fqmsSummariesRepository = createFqmsSummariesRepository(tx)
     const fcostSummariesRepository = createFcostSummariesRepository(tx)
 
@@ -47,8 +45,7 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
     const salesRows = rawSalesRowsRepository
       .findByReportScopeId(scopeResult.scope.id)
       .filter(row => row.salesMonth === scopeInput.monthKey)
-    const serviceRows = rawServiceRowsRepository
-      .findByReportScopeId(scopeResult.scope.id)
+    const serviceRows = listEffectiveRawServiceRowsByScopeId(scopeResult.scope.id, tx)
       .filter(row => row.keydate === scopeInput.monthKey)
 
     const salesQuantity = sumBy(salesRows, row => row.quantity)
@@ -67,7 +64,9 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
       unclassifiedClaimRows,
       ppm,
       denominatorStatus: salesQuantity > 0 ? 'ok' : 'missing_or_zero',
-      defectStatusCounts
+      defectStatusCounts,
+      manualOverrideRows: serviceRows.filter(row => row.hasManualOverride).length,
+      missingEffectiveActionMappings: serviceRows.filter(row => row.effectiveAction && !row.masterAction).length
     }
 
     const fqmsStatus = salesImport && serviceImport && salesQuantity > 0 ? 'ok' : 'check'
@@ -133,16 +132,16 @@ function sumBy<T>(items: T[], selector: (item: T) => number) {
   return items.reduce((total, item) => total + selector(item), 0)
 }
 
-function hasCostValue(row: RawServiceRow) {
+function hasCostValue(row: EffectiveRawServiceRow) {
   return row.partsCost !== 0
     || row.laborCost !== 0
     || row.transportationCost !== 0
     || row.totalCost !== 0
 }
 
-function countDefectStatuses(rows: RawServiceRow[]) {
+function countDefectStatuses(rows: EffectiveRawServiceRow[]) {
   return rows.reduce<Record<string, number>>((counts, row) => {
-    const status = normalizeDefectStatus(row.sourceDefectCategory)
+    const status = normalizeDefectStatus(row.effectiveDefectCategory)
 
     if (!status) {
       return counts

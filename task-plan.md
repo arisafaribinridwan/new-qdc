@@ -133,7 +133,7 @@ Phase 3 follow-up decision:
 - [x] Pertahankan sales replace mode sebagai perilaku target.
 - [ ] Ganti raw service operational re-import dari replace penuh menjadi staging compare + upsert per notification/line sebelum raw review dipakai untuk workflow nyata.
 - [x] Tambahkan master action import/seed dari `.doc/dummy master action.csv` atau sumber final dengan kolom `Action`, `Category`, `Defect`.
-- [ ] Hitung effective `defect_category` dan `defect` dari effective action, bukan dari edit manual langsung.
+- [x] Hitung effective `defect_category` dan `defect` dari effective action, bukan dari edit manual langsung.
 
 ## Phase 4 — Aggregation Proof of Accuracy
 
@@ -163,6 +163,7 @@ Catatan status untuk lanjut kerja di PC lain:
 - [x] Implement sales aggregation untuk denominator/summary Slice 0.
 - [x] Implement FQMS claim quantity dari raw service `job_sheet_section = 1`.
 - [x] Implement defect/non-defect ringkas yang dibutuhkan FQMS summary awal.
+- [x] Update FQMS defect/non-defect agar memakai effective action/master action setelah raw service line override.
 - [x] Implement F-COST aggregation dari semua valid cost rows.
 - [x] Simpan F-COST amount dalam rupiah asli.
 - [x] Cross-check `total_cost` vs parts/labor/transportation cost jika field tersedia.
@@ -193,6 +194,10 @@ Tujuan: validasi menjadi gate operasional, bukan checklist abstrak.
 - [x] Implement raw service line key/fingerprint: `notification + job_sheet_section + part_code + line_no_dalam_notification` sebagai baseline.
 - [x] Treat changed line count for an existing notification as CHECK/CONFLICT.
 - [x] Ensure raw import ulang tidak menimpa manual override `symptom`/`action`.
+- [x] Implement API/service raw service line-level override untuk `symptom` dan `action`.
+- [x] Implement effective raw service rows dari raw source + line override + `master_actions`.
+- [x] Implement critical validation untuk override action yang tidak ada di `master_actions`.
+- [x] Implement warning/CHECK untuk override line key yang tidak lagi ada di current raw rows.
 - [x] Implement denominator safety validation.
 - [x] Implement FQMS total consistency validation.
 - [x] Implement F-COST total consistency validation.
