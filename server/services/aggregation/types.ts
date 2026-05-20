@@ -14,6 +14,7 @@ export type AggregationStatus = 'ok' | 'check'
 export type FqmsAggregationDetails = {
   monthKey: string
   salesRows: number
+  masterModelSeriesRows: number
   claimRows: number
   ignoredServiceRows: number
   unclassifiedClaimRows: number

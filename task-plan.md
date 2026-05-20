@@ -41,7 +41,7 @@ Scope terkunci:
 - [ ] Raw service `job_sheet_section = 0` tidak wajib punya `action`, `defect_category`, atau `defect` untuk laporan FQMS.
 - [ ] Review Anomalies FQMS tidak boleh menampilkan row section 0 hanya karena action/defect kosong.
 - [ ] PPM FQMS dibulatkan ke atas ke bilangan bulat.
-- [ ] Master model-series FQMS per product/manufacturer/month belum final; baseline sementara memakai model dari sales bulan berjalan sebagai daftar model aktif.
+- [x] Master model-series FQMS per product/manufacturer/month tersedia untuk Slice 0; model aktif FQMS tidak lagi memakai baseline sales bulan berjalan.
 - [ ] F-COST memakai semua cost rows valid.
 - [ ] Cost disimpan dalam rupiah asli.
 - [ ] Re-import sales same month + product + scope + import type memakai automatic replace.
@@ -324,4 +324,4 @@ Jangan mulai phase ini sebelum gate Slice 0 lulus.
 - [x] `ACTION_UNCLASSIFIED` hanya berarti row FQMS-impact punya action kosong atau action tidak ditemukan di master action.
 - [x] PPM FQMS Slice 0 dibulatkan ke atas ke bilangan bulat.
 - [x] Preview/export saat ini masih monthly summary dari SQLite; desain akumulasi FQMS final perlu service/view model historis, tidak cukup hanya import bulan sebelumnya ke summary bulanan.
-- [ ] Buat master model-series FQMS final per product/manufacturer/month. Baseline sementara memakai model dari sales bulan berjalan sebagai daftar model aktif FQMS.
+- [x] Buat master model-series FQMS final per product/manufacturer/month. Aggregation, validation, dan Review Anomalies memakai master model-series, bukan baseline sales bulan berjalan.

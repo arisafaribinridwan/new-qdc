@@ -29,6 +29,13 @@
       "when": 1779177265324,
       "tag": "0003_talented_warpath",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1779259200000,
+      "tag": "0004_fqms_model_series",
+      "breakpoints": true
     }
   ]
 }

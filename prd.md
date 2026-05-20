@@ -159,7 +159,7 @@ Scope Slice 0:
 - Raw service `job_sheet_section = 0` tidak wajib punya action/defect untuk laporan FQMS dan tidak boleh membuat Review Anomalies FQMS ramai hanya karena field tersebut kosong.
 - Action yang valid tetapi master action-nya menghasilkan `N/A` tidak dihitung sebagai claim FQMS dan tidak menjadi `ACTION_UNCLASSIFIED`.
 - PPM FQMS Slice 0 dibulatkan ke atas ke bilangan bulat untuk preview/export ringkas.
-- Master model-series FQMS per product/manufacturer/month belum final; baseline Slice 0 sementara memakai model dari sales bulan berjalan sebagai daftar model aktif.
+- Master model-series FQMS per product/manufacturer/month menjadi sumber daftar model aktif FQMS. Slice 0 sudah memakai seed/import kecil untuk LCD LOCAL April 2026; sales bulan berjalan tidak lagi menjadi baseline daftar model aktif.
 - F-COST dihitung dari semua cost rows valid.
 - Cost disimpan dalam rupiah asli; scaling hanya untuk tampilan/export.
 - Count/quantity harus exact terhadap referensi April 2026; cost boleh berbeda hanya karena pembulatan presentasi.

@@ -60,6 +60,10 @@ export type ReviewAnomalyItem = {
     source: string | null
     effective: string | null
   }
+  impact: {
+    fqms: boolean
+    fcost: boolean
+  }
   issueCodes: ReviewAnomalyCode[]
 }
 
