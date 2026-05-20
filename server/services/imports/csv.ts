@@ -9,10 +9,12 @@ type CsvRow = CsvCell[]
 
 export async function parseCsv(content: Buffer, requiredHeaders: readonly string[] = []): Promise<ParsedCsv> {
   const rows: CsvRow[] = []
+  const delimiter = detectDelimiter(content, requiredHeaders)
   const parser = Readable
     .from([content])
     .pipe(parse({
       bom: true,
+      delimiter,
       relax_column_count: true,
       skip_empty_lines: true,
       trim: false
@@ -76,6 +78,44 @@ function normalizeHeaders(headerRow: CsvRow, requiredHeaders: readonly string[])
 
 function normalizeHeaderName(value: string | undefined) {
   return (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function detectDelimiter(content: Buffer, requiredHeaders: readonly string[]) {
+  const fallbackDelimiter = ','
+
+  if (requiredHeaders.length === 0) {
+    return fallbackDelimiter
+  }
+
+  const sampleLines = content
+    .toString('utf8')
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .slice(0, 50)
+  const candidates = [',', ';', '\t']
+  const requiredHeaderSet = new Set(requiredHeaders.map(header => normalizeHeaderName(header)))
+  let bestDelimiter = fallbackDelimiter
+  let bestScore = -1
+
+  for (const candidate of candidates) {
+    const score = sampleLines.reduce((highestScore, line) => {
+      const columnNames = line
+        .split(candidate)
+        .map(column => normalizeHeaderName(column))
+      const matchedHeaders = columnNames.filter(column => requiredHeaderSet.has(column)).length
+
+      return Math.max(highestScore, matchedHeaders)
+    }, 0)
+
+    if (score > bestScore) {
+      bestDelimiter = candidate
+      bestScore = score
+    }
+  }
+
+  return bestDelimiter
 }
 
 function toRecord(headers: string[], row: CsvRow): CsvRecord {

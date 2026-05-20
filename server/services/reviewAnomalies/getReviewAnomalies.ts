@@ -2,6 +2,7 @@ import { getDb } from '../../db/client'
 import {
   createFactoryMappingsRepository,
   createMasterActionsRepository,
+  createRawSalesRowsRepository,
   createRawServiceLineOverridesRepository,
   createRawServiceRowsRepository,
   createScopesRepository
@@ -9,14 +10,17 @@ import {
 import { normalizeCode } from '../imports/normalizers'
 import { resolveImportScope } from '../imports/validators'
 import { ReviewAnomaliesNotFoundError } from './errors'
-import type { ReviewAnomaliesResult, ReviewAnomaliesScopeInput, ReviewAnomalyCode, ReviewAnomalyItem } from './types'
+import type { ReviewAnomaliesResult, ReviewAnomaliesScopeInput, ReviewAnomalyCode, ReviewAnomalyItem, ReviewImpactFilter } from './types'
 
 type RawServiceRow = ReturnType<ReturnType<typeof createRawServiceRowsRepository>['findByReportScopeId']>[number]
 type RawServiceLineOverride = ReturnType<ReturnType<typeof createRawServiceLineOverridesRepository>['listByReportScopeId']>[number]
 type MasterAction = ReturnType<ReturnType<typeof createMasterActionsRepository>['listAll']>[number]
 
+const claimJobSheetSection = 1
+
 export function getReviewAnomalies(input: ReviewAnomaliesScopeInput = {}): ReviewAnomaliesResult {
   const scopeInput = resolveImportScope(input)
+  const impactFilter = getReviewImpactFilter(input.impact)
   const database = getDb()
   const scopeResult = createScopesRepository(database).findReportScopeByCodes(
     scopeInput.monthKey,
@@ -40,22 +44,31 @@ export function getReviewAnomalies(input: ReviewAnomaliesScopeInput = {}): Revie
   const actionClassificationByAction = new Map(
     masterActions.map(action => [normalizeCode(action.action), action])
   )
+  const activeFqmsModelCodes = createActiveFqmsModelCodes(
+    createRawSalesRowsRepository(database)
+      .findByReportScopeId(scopeResult.scope.id)
+      .filter(row => row.salesMonth === scopeInput.monthKey)
+  )
   const rows = createRawServiceRowsRepository(database)
     .findByReportScopeId(scopeResult.scope.id)
     .filter(row => row.keydate === scopeInput.monthKey || Boolean(overridesByLineKey.has(getReviewLineKey(row))))
 
   const allItems = rows
-    .map(row => toReviewAnomalyItem(row, overridesByLineKey.get(getReviewLineKey(row)), actionClassificationByAction, scopeInput.monthKey, activeFactoryCodes))
+    .map(row => toReviewAnomalyItem(row, overridesByLineKey.get(getReviewLineKey(row)), actionClassificationByAction, scopeInput.monthKey, activeFactoryCodes, activeFqmsModelCodes))
     .filter(item => item.issueCodes.length > 0)
+  const filteredItems = filterItemsByImpact(allItems, impactFilter)
 
   return {
     reportScopeId: scopeResult.scope.id,
     monthKey: scopeInput.monthKey,
     productCode: scopeInput.productCode,
     manufacturerCode: scopeInput.manufacturerCode,
-    totalItemCount: allItems.length,
-    summary: summarizeItems(allItems),
-    items: allItems.slice(0, 100)
+    impactFilter,
+    totalItemCount: filteredItems.length,
+    allItemCount: allItems.length,
+    impactSummary: summarizeImpact(allItems),
+    summary: summarizeItems(filteredItems),
+    items: filteredItems.slice(0, 100)
   }
 }
 
@@ -64,7 +77,8 @@ export function toReviewAnomalyItem(
   override: RawServiceLineOverride | undefined,
   actionClassificationByAction: Map<string, MasterAction>,
   monthKey: string,
-  activeFactoryCodes: Set<string>
+  activeFactoryCodes: Set<string>,
+  activeFqmsModelCodes: Set<string>
 ): ReviewAnomalyItem {
   const source = getRawServiceSource(row)
   const effectiveAction = normalizeNullableCode(override?.overrideAction) ?? source.action
@@ -72,9 +86,10 @@ export function toReviewAnomalyItem(
   const effectiveClassification = effectiveAction ? actionClassificationByAction.get(normalizeCode(effectiveAction)) : undefined
   const effectiveDefectCategory = effectiveClassification?.category ?? null
   const effectiveDefect = effectiveClassification?.defect ?? null
+  const isFqmsImpact = isFqmsImpactSource(source, activeFqmsModelCodes)
   const issueCodes: ReviewAnomalyCode[] = []
 
-  if (!source.modelCode) {
+  if (isFqmsImpact && !source.modelCode) {
     issueCodes.push('MISSING_MODEL')
   }
 
@@ -86,7 +101,7 @@ export function toReviewAnomalyItem(
     issueCodes.push('FACTORY_MAPPING_MISMATCH')
   }
 
-  if (!effectiveAction || !effectiveClassification || isUnclassifiedDefectCategory(effectiveDefectCategory)) {
+  if (isFqmsImpact && shouldFlagUnclassifiedFqmsAction(effectiveAction, effectiveClassification)) {
     issueCodes.push('ACTION_UNCLASSIFIED')
   }
 
@@ -160,6 +175,81 @@ function summarizeItems(items: ReviewAnomalyItem[]) {
   })
 }
 
+function summarizeImpact(items: ReviewAnomalyItem[]): Record<ReviewImpactFilter, number> {
+  return {
+    fqms: items.filter(item => isFqmsImpactItem(item)).length,
+    fcost: items.filter(item => isFcostImpactItem(item)).length,
+    all: items.length
+  }
+}
+
+function filterItemsByImpact(items: ReviewAnomalyItem[], impactFilter: ReviewImpactFilter) {
+  if (impactFilter === 'fqms') {
+    return items.filter(item => isFqmsImpactItem(item))
+  }
+
+  if (impactFilter === 'fcost') {
+    return items.filter(item => isFcostImpactItem(item))
+  }
+
+  return items
+}
+
+function isFqmsImpactItem(item: ReviewAnomalyItem) {
+  return item.source.jobSheetSection === claimJobSheetSection
+}
+
+function isFcostImpactItem(item: ReviewAnomalyItem) {
+  return item.source.totalCost !== 0
+}
+
+function getReviewImpactFilter(value: string | undefined): ReviewImpactFilter {
+  return value === 'fqms' || value === 'fcost' || value === 'all' ? value : 'all'
+}
+
+function createActiveFqmsModelCodes(rows: Array<{ modelCode: string | null }>) {
+  return new Set(rows
+    .map(row => normalizeNullableCode(row.modelCode))
+    .filter((modelCode): modelCode is string => Boolean(modelCode)))
+}
+
+function isFqmsImpactSource(
+  source: { jobSheetSection: number | null, modelCode: string | null },
+  activeFqmsModelCodes: Set<string>
+) {
+  if (source.jobSheetSection !== claimJobSheetSection) {
+    return false
+  }
+
+  const modelCode = normalizeNullableCode(source.modelCode)
+  return !modelCode || activeFqmsModelCodes.size === 0 || activeFqmsModelCodes.has(modelCode)
+}
+
+function shouldFlagUnclassifiedFqmsAction(action: string | null, classification: MasterAction | undefined) {
+  if (!action?.trim() || !classification) {
+    return true
+  }
+
+  const category = normalizeDefectStatus(classification?.category ?? null)
+  const defect = normalizeRequiredFqmsValue(classification?.defect ?? null)
+
+  if (!category || !defect) {
+    return false
+  }
+
+  return category !== 'DEFECT' && category !== 'NON_DEFECT'
+}
+
+function normalizeDefectStatus(value: string | null) {
+  const normalized = (value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_')
+  return normalized && normalized !== 'N/A' ? normalized : null
+}
+
+function normalizeRequiredFqmsValue(value: string | null) {
+  const normalized = (value ?? '').trim().toUpperCase()
+  return normalized && normalized !== 'N/A' ? normalized : null
+}
+
 function normalizeNullableText(value: string | null | undefined) {
   const normalized = (value ?? '').trim()
   return normalized.length > 0 ? normalized : null
@@ -168,11 +258,6 @@ function normalizeNullableText(value: string | null | undefined) {
 function normalizeNullableCode(value: string | null | undefined) {
   const normalized = normalizeCode(value ?? undefined)
   return normalized.length > 0 ? normalized : null
-}
-
-function isUnclassifiedDefectCategory(value: string | null | undefined) {
-  const normalized = normalizeCode(value ?? undefined)
-  return !normalized || normalized === 'N/A'
 }
 
 export function getReviewLineKey(row: RawServiceRow) {

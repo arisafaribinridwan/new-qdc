@@ -1,6 +1,6 @@
 # Task Plan Implementasi — QRCC Data Center
 
-> **Versi**: 2.1 · **Terakhir diperbarui**: 2026-05-19
+> **Versi**: 2.2 · **Terakhir diperbarui**: 2026-05-20
 >
 > Checklist ini memakai pendekatan **data-truth-first vertical slice**. Milestone pertama bukan jumlah halaman, tetapi bukti bahwa workflow April 2026 LCD LOCAL menghasilkan angka FQMS/F-COST yang akurat, auditable, dan bisa diexport.
 
@@ -35,7 +35,13 @@ Scope terkunci:
 - [ ] Template referensi: `templates/excel/FQMS - LCD LOCAL.xlsx` dan `templates/excel/FCOST - LCD LOCAL.xlsx`.
 - [ ] Quantity/count harus exact terhadap referensi.
 - [ ] Cost/amount boleh berbeda hanya karena pembulatan presentasi.
-- [ ] FQMS claim quantity memakai `job_sheet_section = 1`.
+- [ ] FQMS hanya memakai raw service `job_sheet_section = 1`.
+- [ ] Untuk raw service FQMS-impact pada model aktif laporan, `action`, `defect_category` (`DEFECT`/`NON_DEFECT`), dan `defect` wajib terisi.
+- [ ] Raw service dengan `defect_category` atau `defect` bernilai `N/A` tidak dihitung sebagai claim FQMS.
+- [ ] Raw service `job_sheet_section = 0` tidak wajib punya `action`, `defect_category`, atau `defect` untuk laporan FQMS.
+- [ ] Review Anomalies FQMS tidak boleh menampilkan row section 0 hanya karena action/defect kosong.
+- [ ] PPM FQMS dibulatkan ke atas ke bilangan bulat.
+- [ ] Master model-series FQMS per product/manufacturer/month belum final; baseline sementara memakai model dari sales bulan berjalan sebagai daftar model aktif.
 - [ ] F-COST memakai semua cost rows valid.
 - [ ] Cost disimpan dalam rupiah asli.
 - [ ] Re-import sales same month + product + scope + import type memakai automatic replace.
@@ -161,7 +167,7 @@ Catatan status untuk lanjut kerja di PC lain:
 - Final cross-check Phase 4 sudah dikonfirmasi cocok semua terhadap referensi FQMS/F-COST April 2026 LCD LOCAL. Tidak ada mismatch blocking yang tersisa untuk Phase 4.
 
 - [x] Implement sales aggregation untuk denominator/summary Slice 0.
-- [x] Implement FQMS claim quantity dari raw service `job_sheet_section = 1`.
+- [x] Implement FQMS claim quantity dari raw service reportable: `job_sheet_section = 1`, action valid, category `DEFECT`/`NON_DEFECT`, dan defect bukan `N/A`.
 - [x] Implement defect/non-defect ringkas yang dibutuhkan FQMS summary awal.
 - [x] Update FQMS defect/non-defect agar memakai effective action/master action setelah raw service line override.
 - [x] Implement F-COST aggregation dari semua valid cost rows.
@@ -309,3 +315,13 @@ Jangan mulai phase ini sebelum gate Slice 0 lulus.
 - [ ] User dapat Print to PDF dari browser.
 - [ ] User dapat backup SQLite database.
 - [ ] Aplikasi dapat dijalankan di PC Windows tanpa install Node.js/database/browser tambahan.
+
+## Keputusan Baku Tambahan dari Testing Slice 0
+
+- [x] FQMS claim hanya menghitung row reportable: `job_sheet_section = 1`, model masuk daftar laporan FQMS, action ada di master action, category `DEFECT`/`NON_DEFECT`, dan defect bukan kosong/`N/A`.
+- [x] Row dengan master action `N/A / N/A` dikeluarkan dari claim FQMS dan bukan `ACTION_UNCLASSIFIED`.
+- [x] Row `job_sheet_section = 0` tidak wajib punya action/category/defect untuk FQMS dan tidak boleh membuat Review Anomalies FQMS ramai.
+- [x] `ACTION_UNCLASSIFIED` hanya berarti row FQMS-impact punya action kosong atau action tidak ditemukan di master action.
+- [x] PPM FQMS Slice 0 dibulatkan ke atas ke bilangan bulat.
+- [x] Preview/export saat ini masih monthly summary dari SQLite; desain akumulasi FQMS final perlu service/view model historis, tidak cukup hanya import bulan sebelumnya ke summary bulanan.
+- [ ] Buat master model-series FQMS final per product/manufacturer/month. Baseline sementara memakai model dari sales bulan berjalan sebagai daftar model aktif FQMS.

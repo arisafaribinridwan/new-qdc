@@ -154,7 +154,7 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
     ['Computed At', viewModel.fqms?.computedAt ?? null]
   ])
 
-  summary.getColumn(2).numFmt = '#,##0.000000'
+  summary.getColumn(2).numFmt = '#,##0'
 }
 
 function fillFcostTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel) {

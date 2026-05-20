@@ -1,7 +1,11 @@
 import type { rawServiceLineOverrides } from '../../db/schema'
 import type { ImportScopeInput } from '../imports/types'
 
-export type ReviewAnomaliesScopeInput = ImportScopeInput
+export type ReviewImpactFilter = 'fqms' | 'fcost' | 'all'
+
+export type ReviewAnomaliesScopeInput = ImportScopeInput & {
+  impact?: string
+}
 
 export type ReviewAnomalyCode =
   | 'MISSING_MODEL'
@@ -64,7 +68,10 @@ export type ReviewAnomaliesResult = {
   monthKey: string
   productCode: string
   manufacturerCode: string
+  impactFilter: ReviewImpactFilter
   totalItemCount: number
+  allItemCount: number
+  impactSummary: Record<ReviewImpactFilter, number>
   summary: Record<ReviewAnomalyCode, number>
   items: ReviewAnomalyItem[]
 }
@@ -77,6 +84,17 @@ export type RawServiceOverrideInput = ReviewAnomaliesScopeInput & {
 }
 
 export type RawServiceOverrideResult = {
-  override: typeof rawServiceLineOverrides.$inferSelect
+  override: typeof rawServiceLineOverrides.$inferSelect | null
   item: ReviewAnomalyItem
+}
+
+export type ReviewActionOption = {
+  action: string
+  category: string
+  defect: string
+  isActive: boolean
+}
+
+export type ReviewActionOptionsResult = {
+  items: ReviewActionOption[]
 }

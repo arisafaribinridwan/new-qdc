@@ -83,7 +83,12 @@ Target folder structure is documented in the PRD. Keep `app/` for Nuxt UI, `serv
 - Raw service `defect_category` and `defect` are derived from effective action via master action (`Action`, `Category`, `Defect`), not edited manually.
 - Changed line count for an existing raw service notification is CHECK/CONFLICT and should flow to Review Anomalies.
 - Exported reports should eventually be stored as snapshots/history: current data can keep changing, but a finalized export should not change silently.
-- For Slice 0, FQMS claim quantities use `job_sheet_section = 1`.
+- For Slice 0, FQMS claim quantities use only reportable raw service rows: `job_sheet_section = 1`, model is in the active FQMS report model set, action exists in `master_actions`, category is `DEFECT` or `NON_DEFECT`, and defect is not blank/`N/A`.
+- Raw service `job_sheet_section = 0` does not need action/category/defect for FQMS and must not create FQMS Review Anomalies just because those fields are blank.
+- Master action mappings to category/defect `N/A` mean the row is excluded from FQMS claim quantity; this is not `ACTION_UNCLASSIFIED`.
+- `ACTION_UNCLASSIFIED` is only for FQMS-impact rows whose action is blank or missing from `master_actions`.
+- FQMS PPM in Slice 0 preview/export is rounded up to a whole number.
+- A final master model-series table for FQMS is not implemented yet; current Slice 0 behavior uses sales rows for the selected month as the temporary active FQMS model set.
 - For Slice 0, F-COST aggregates all valid cost rows.
 - Store F-COST amounts in raw rupiah; scaling belongs only in display/export formatting.
 

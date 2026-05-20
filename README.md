@@ -15,6 +15,10 @@ Important Phase 4 proof facts:
 - LOCAL factory mapping for the sample is `SEID`, `SKW`, `MOKA`, and `MTC`.
 - Sales CSV uses `Model` as the original/source model and `Report Model` as the reporting/aggregation model. Required header matching is case-insensitive, so `report model` and `Report model` are accepted.
 - Sales CSV also requires `Sales Month` in `YYYY-MM` format so the file period can be validated against the selected report month.
+- Slice 0 FQMS claim quantity only counts reportable raw service rows: `job_sheet_section = 1`, model is in the active FQMS report model set, action exists in master action, category is `DEFECT` or `NON_DEFECT`, and defect is not blank/`N/A`.
+- Master action mappings to `N/A / N/A` are excluded from FQMS claim quantity and are not `ACTION_UNCLASSIFIED`.
+- Slice 0 FQMS PPM is rounded up to a whole number in preview/export.
+- A final FQMS master model-series table is not implemented yet; current Slice 0 behavior temporarily uses sales rows for the selected month as the active FQMS model set.
 - FQMS Section C uses accumulated per-model values, not only one monthly raw summary.
 - Accumulated FQMS PPM denominator is `accumulated_sales * launching_period`.
 - Total FQMS AVG PPM uses total exposure across models, not an average of model PPM values.
@@ -89,6 +93,7 @@ No test runner is configured yet. Do not invent test commands until a test scrip
 - Raw service operational re-import should use staging compare + upsert per notification/line, not blind append or full replace.
 - Raw service manual review is line-level for `symptom` and `action`; import ulang must not silently overwrite those overrides.
 - Raw service `defect_category` and `defect` are derived from effective action through master action mapping.
+- `ACTION_UNCLASSIFIED` means a FQMS-impact row has a blank action or an action missing from master action. Valid actions mapped to `N/A` are excluded, not reviewed.
 - Keep backend boundaries: API controller -> service -> repository -> SQLite.
 - Critical validation issues block export; warning/CHECK issues remain visible but do not block export.
 - Do not treat UI/report work as final until Slice 0 parser and aggregation numbers are proven accurate.

@@ -100,7 +100,7 @@ export function runScopeValidation(input: ValidationScopeInput = {}): Validation
     issues.push(...validateRawServiceOverrideContinuity(currentServiceRows, manualOverrides))
     issues.push(...validateRawServiceOverrideActions(manualOverrides, masterActions))
     issues.push(...validateDenominator(fqms))
-    issues.push(...validateFqmsTotal(fqms, currentEffectiveServiceRows))
+    issues.push(...validateFqmsTotal(fqms, currentEffectiveServiceRows, currentSalesRows))
     issues.push(...validateFcostTotal(fcost, currentServiceRows))
 
     const counts = countIssues(issues)
@@ -251,7 +251,7 @@ function validateMappingCompleteness(
 ): ValidationIssueInput[] {
   const issues: ValidationIssueInput[] = []
   const salesMissingModel = salesRows.filter(row => !row.modelCode)
-  const serviceMissingModel = serviceRows.filter(row => !row.modelCode)
+  const serviceMissingModel = serviceRows.filter(row => row.jobSheetSection === claimJobSheetSection && !row.modelCode)
   const rowsOutsideMappings = [...salesRows, ...serviceRows]
     .filter(row => !row.factoryCode || !activeFactoryCodes.has(row.factoryCode))
 
@@ -518,24 +518,25 @@ function rawServiceCompareIssue(
 
 function validateFqmsTotal(
   fqms: ReturnType<ReturnType<typeof createFqmsSummariesRepository>['findByReportScopeId']>,
-  serviceRows: EffectiveRawServiceRow[]
+  serviceRows: EffectiveRawServiceRow[],
+  salesRows: RawSalesRow[]
 ): ValidationIssueInput[] {
   if (!fqms) {
     return []
   }
 
   const issues: ValidationIssueInput[] = []
-  const claimRows = serviceRows.filter(row => row.jobSheetSection === claimJobSheetSection)
+  const activeFqmsModelCodes = createActiveFqmsModelCodes(salesRows)
+  const fqmsCandidateRows = serviceRows.filter(row => isFqmsCandidateRow(row, activeFqmsModelCodes))
+  const claimRows = fqmsCandidateRows.filter(isFqmsReportableClaimRow)
   const effectiveDefectStatusCounts = countEffectiveDefectStatuses(claimRows)
-  const details = parseJsonObject(fqms.summaryJson)
-  const unclassified = Number(details.unclassifiedClaimRows ?? 0)
-  const storedTotal = fqms.defectCount + fqms.nonDefectCount + unclassified
+  const storedTotal = fqms.defectCount + fqms.nonDefectCount
 
   if (fqms.claimQuantity !== claimRows.length) {
     issues.push({
       code: 'FQMS_CLAIM_TOTAL_MISMATCH',
       severity: 'error',
-      reason: 'Stored FQMS claim quantity does not match current raw service claim rows.',
+      reason: 'Stored FQMS claim quantity does not match current reportable raw service claim rows.',
       relatedPage: '/validation',
       relatedData: { storedClaimQuantity: fqms.claimQuantity, rawClaimRows: claimRows.length }
     })
@@ -545,13 +546,12 @@ function validateFqmsTotal(
     issues.push({
       code: 'FQMS_DEFECT_TOTAL_MISMATCH',
       severity: 'error',
-      reason: 'FQMS claim quantity does not equal defect + non-defect + unclassified count.',
+      reason: 'FQMS claim quantity does not equal defect + non-defect count.',
       relatedPage: '/validation',
       relatedData: {
         claimQuantity: fqms.claimQuantity,
         defectCount: fqms.defectCount,
-        nonDefectCount: fqms.nonDefectCount,
-        unclassifiedClaimRows: unclassified
+        nonDefectCount: fqms.nonDefectCount
       }
     })
   }
@@ -675,6 +675,30 @@ function countEffectiveDefectStatuses(rows: EffectiveRawServiceRow[]) {
   }, {})
 }
 
+function createActiveFqmsModelCodes(rows: Array<{ modelCode: string | null }>) {
+  return new Set(rows
+    .map(row => normalizeModelCode(row.modelCode))
+    .filter((modelCode): modelCode is string => Boolean(modelCode)))
+}
+
+function isFqmsCandidateRow(row: EffectiveRawServiceRow, activeFqmsModelCodes: Set<string>) {
+  if (row.jobSheetSection !== claimJobSheetSection) {
+    return false
+  }
+
+  const modelCode = normalizeModelCode(row.modelCode)
+  return !modelCode || activeFqmsModelCodes.size === 0 || activeFqmsModelCodes.has(modelCode)
+}
+
+function isFqmsReportableClaimRow(row: EffectiveRawServiceRow) {
+  const status = normalizeDefectStatus(row.effectiveDefectCategory)
+  const defect = normalizeRequiredFqmsValue(row.effectiveDefect)
+
+  return Boolean(row.effectiveAction?.trim())
+    && (status === 'DEFECT' || status === 'NON_DEFECT')
+    && Boolean(defect)
+}
+
 function normalizeDefectStatus(value: string | null) {
   const normalized = (value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_')
 
@@ -683,6 +707,16 @@ function normalizeDefectStatus(value: string | null) {
   }
 
   return normalized
+}
+
+function normalizeRequiredFqmsValue(value: string | null) {
+  const normalized = (value ?? '').trim().toUpperCase()
+  return normalized && normalized !== 'N/A' ? normalized : null
+}
+
+function normalizeModelCode(value: string | null) {
+  const normalized = (value ?? '').trim().toUpperCase()
+  return normalized.length > 0 ? normalized : null
 }
 
 function normalizeActionKey(action: string) {
