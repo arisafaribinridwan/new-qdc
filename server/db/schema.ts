@@ -96,6 +96,30 @@ export const fqmsAccumulatedModelRows = sqliteTable('fqms_accumulated_model_rows
   index('fqms_accumulated_model_rows_scope_report_model_idx').on(table.reportScopeId, table.reportModelCode)
 ])
 
+export const fqmsHistoricalDefectRows = sqliteTable('fqms_historical_defect_rows', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  reportScopeId: integer('report_scope_id').notNull().references(() => reportScopes.id, { onDelete: 'cascade' }),
+  sourceModelCode: text('source_model_code').notNull(),
+  reportModelCode: text('report_model_code').notNull(),
+  monitoringFile: text('monitoring_file').notNull(),
+  rowNumber: integer('row_number').notNull(),
+  notification: text('notification'),
+  keydate: text('keydate').notNull(),
+  jobSheetSection: integer('job_sheet_section'),
+  factoryCode: text('factory_code'),
+  action: text('action'),
+  defectCategory: text('defect_category'),
+  defect: text('defect'),
+  rawJson: text('raw_json').notNull(),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, table => [
+  uniqueIndex('fqms_historical_defect_rows_scope_file_row_unique').on(table.reportScopeId, table.monitoringFile, table.rowNumber),
+  index('fqms_historical_defect_rows_scope_keydate_idx').on(table.reportScopeId, table.keydate),
+  index('fqms_historical_defect_rows_scope_model_idx').on(table.reportScopeId, table.reportModelCode),
+  index('fqms_historical_defect_rows_scope_defect_idx').on(table.reportScopeId, table.defectCategory, table.defect)
+])
+
 export const dataImports = sqliteTable('data_imports', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   reportScopeId: integer('report_scope_id').notNull().references(() => reportScopes.id, { onDelete: 'cascade' }),

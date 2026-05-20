@@ -43,6 +43,13 @@
       "when": 1779266198894,
       "tag": "0005_young_shinko_yamashiro",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1779270000000,
+      "tag": "0006_fqms_historical_defect_rows",
+      "breakpoints": true
     }
   ]
 }
