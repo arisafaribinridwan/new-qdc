@@ -140,6 +140,7 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
   worksheet.getCell('D4').value = `: ${viewModel.scope.manufacturerCode}`
   worksheet.getCell('R4').value = createExcelMonthDate(viewModel.scope.calendarYear, viewModel.scope.calendarMonth)
   fillFqmsDetailModelSection(worksheet, viewModel)
+  fillFqmsWorstDefectSection(worksheet, viewModel)
 
   const summary = createSummaryWorksheet(workbook, 'QRCC Summary', [
     ['Report Month', viewModel.scope.monthLabel],
@@ -158,6 +159,9 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
     ['Accumulated Non Defect PPM', viewModel.fqms?.accumulated?.totals.nonDefectPpm ?? null],
     ['Accumulated Total PPM', viewModel.fqms?.accumulated?.totals.totalPpm ?? null],
     ['Accumulated Active Models', viewModel.fqms?.accumulated?.activeReportModelCount ?? null],
+    ['Worst Defect Source', viewModel.fqms?.worstDefects?.source ?? 'missing'],
+    ['Worst Defect Status', viewModel.fqms?.worstDefects?.status ?? 'missing'],
+    ['Worst Defect Missing History Buckets', viewModel.fqms?.worstDefects?.missingHistoryBuckets.join(', ') ?? null],
     ['Computed At', viewModel.fqms?.computedAt ?? null]
   ])
 
@@ -251,6 +255,102 @@ function styleFqmsDetailTotalLabel(worksheet: ExcelJS.Worksheet) {
     color: { argb: 'FFFFFFFF' }
   }
   cell.alignment = { horizontal: 'center', vertical: 'middle' }
+}
+
+function fillFqmsWorstDefectSection(worksheet: ExcelJS.Worksheet, viewModel: ReportViewModel) {
+  const accumulated = viewModel.fqms?.accumulated
+  const worstDefects = viewModel.fqms?.worstDefects
+
+  if (!accumulated) {
+    return
+  }
+
+  const modelRows = [...accumulated.rows].sort(compareFqmsAccumulatedRows)
+  const rowsByModel = new Map<string, NonNullable<NonNullable<ReportViewModel['fqms']>['worstDefects']>['rows']>()
+
+  for (const row of worstDefects?.rows ?? []) {
+    const rows = rowsByModel.get(row.reportModelCode) ?? []
+    rows.push(row)
+    rowsByModel.set(row.reportModelCode, rows)
+  }
+
+  const bucketCells = [
+    { cell: 'F40', key: 'older' as const },
+    { cell: 'G40', key: 'monthMinus2' as const },
+    { cell: 'H40', key: 'monthMinus1' as const },
+    { cell: 'I40', key: 'reportMonth' as const }
+  ]
+
+  for (const bucketCell of bucketCells) {
+    const bucket = worstDefects?.buckets.find(item => item.key === bucketCell.key)
+    worksheet.getCell(bucketCell.cell).value = bucket?.label ?? null
+  }
+
+  const sectionStartRow = 41
+  const rowsPerModel = 3
+
+  for (let modelIndex = 0; modelIndex < 14; modelIndex += 1) {
+    const model = modelRows[modelIndex]
+    const rowStart = sectionStartRow + modelIndex * rowsPerModel
+    const modelWorstDefects = model ? (rowsByModel.get(model.reportModelCode) ?? []).slice(0, rowsPerModel) : []
+
+    clearFqmsWorstDefectModelRows(worksheet, rowStart, rowsPerModel)
+
+    if (!model) {
+      continue
+    }
+
+    worksheet.getCell(`B${rowStart}`).value = model.reportModelCode
+    worksheet.getCell(`B${rowStart}`).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+
+    for (let offset = 0; offset < rowsPerModel; offset += 1) {
+      const rowNumber = rowStart + offset
+      const defect = modelWorstDefects[offset]
+
+      if (!defect) {
+        continue
+      }
+
+      worksheet.getCell(`D${rowNumber}`).value = formatDefectLabel(defect.defect)
+      worksheet.getCell(`F${rowNumber}`).value = defect.buckets.older
+      worksheet.getCell(`G${rowNumber}`).value = defect.buckets.monthMinus2
+      worksheet.getCell(`H${rowNumber}`).value = defect.buckets.monthMinus1
+      worksheet.getCell(`I${rowNumber}`).value = defect.buckets.reportMonth
+      worksheet.getCell(`J${rowNumber}`).value = roundedNumber(defect.total)
+      worksheet.getCell(`K${rowNumber}`).value = defect.defectOccupancy
+      worksheet.getCell(`L${rowNumber}`).value = roundedNumber(defect.defectPpm)
+      applyFqmsWorstDefectNumberFormats(worksheet, rowNumber)
+    }
+  }
+}
+
+function clearFqmsWorstDefectModelRows(worksheet: ExcelJS.Worksheet, rowStart: number, rowsPerModel: number) {
+  worksheet.getCell(`B${rowStart}`).value = null
+
+  for (let offset = 0; offset < rowsPerModel; offset += 1) {
+    const rowNumber = rowStart + offset
+
+    for (const column of ['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']) {
+      worksheet.getCell(`${column}${rowNumber}`).value = null
+    }
+
+    applyFqmsWorstDefectNumberFormats(worksheet, rowNumber)
+  }
+}
+
+function applyFqmsWorstDefectNumberFormats(worksheet: ExcelJS.Worksheet, rowNumber: number) {
+  for (const column of ['F', 'G', 'H', 'I', 'J', 'L']) {
+    worksheet.getCell(`${column}${rowNumber}`).numFmt = '#,##0'
+  }
+
+  worksheet.getCell(`K${rowNumber}`).numFmt = '0.0%'
+}
+
+function formatDefectLabel(defect: string) {
+  return defect
+    .split('_')
+    .map(part => part.slice(0, 1) + part.slice(1).toLowerCase())
+    .join(' ')
 }
 
 function readNumberCellValue(value: ExcelJS.CellValue) {

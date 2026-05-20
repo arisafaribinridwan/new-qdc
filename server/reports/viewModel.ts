@@ -9,6 +9,7 @@ import { getFqmsAccumulatedReportViewModel } from '../services/fqmsAccumulated'
 import { importTypes } from '../services/imports/constants'
 import { resolveImportScope } from '../services/imports/validators'
 import { ReportNotFoundError } from './errors'
+import { getFqmsWorstDefectsViewModel } from './fqmsWorstDefects'
 import type { ReportScopeInput, ReportViewModel } from './types'
 
 type FqmsDetails = {
@@ -65,6 +66,12 @@ export function getReportViewModel(input: ReportScopeInput = {}): ReportViewMode
     monthKey: scopeInput.monthKey,
     db: database
   })
+  const worstDefects = getFqmsWorstDefectsViewModel({
+    reportScopeId: scopeResult.scope.id,
+    monthKey: scopeInput.monthKey,
+    accumulated: accumulatedFqms,
+    db: database
+  })
   const reportFqms = accumulatedFqms
     ? {
         source: 'accumulated' as const,
@@ -78,6 +85,7 @@ export function getReportViewModel(input: ReportScopeInput = {}): ReportViewMode
         denominatorStatus: accumulatedFqms.totals.denominatorStatus,
         computedAt: accumulatedFqms.computedAt,
         accumulated: accumulatedFqms,
+        worstDefects,
         monthly: monthlyFqms
       }
     : monthlyFqms
@@ -85,6 +93,7 @@ export function getReportViewModel(input: ReportScopeInput = {}): ReportViewMode
           source: 'monthly_summary' as const,
           ...monthlyFqms,
           accumulated: null,
+          worstDefects: null,
           monthly: monthlyFqms
         }
       : null

@@ -1,6 +1,6 @@
 # Spec Report FQMS — QRCC Data Center
 
-> **Versi**: 1.0 · **Terakhir diperbarui**: 2026-05-17
+> **Versi**: 1.1 · **Terakhir diperbarui**: 2026-05-20
 >
 > Dokumen ini adalah spesifikasi report FQMS. Untuk PRD core lihat [`prd.md`](prd.md). Untuk backend view model dan API lihat [`backend.md`](backend.md).
 
@@ -152,5 +152,13 @@ defect_ppm = total_defect_category / (accumulated_sales_model × launching_perio
 ```
 
 `defect_ppm` Section D harus memakai denominator `accumulated_sales_model × launching_period_model` agar konsisten dengan Section C.
+
+Implementasi Slice 0:
+
+- Model Section D mengikuti urutan/model aktif Section C.
+- Defect berasal dari effective raw service row: `job_sheet_section = 1`, model masuk active FQMS model set, action ada di `master_actions`, category `DEFECT`, dan defect bukan kosong/`N/A`.
+- `defect_occup` memakai total defect model pada bucket yang tersedia di SQLite.
+- Untuk April 2026, SQLite baru memiliki raw service month `202604`; karena itu bucket `~Jan'26`, `Feb'26`, dan `Mar'26` dibiarkan blank/non-blocking CHECK, sedangkan bucket `Apr'26` diisi dari data yang tersedia.
+- Export Excel membersihkan placeholder template `Model A`, `Model B`, dan seterusnya pada range Worst Defect.
 
 ---

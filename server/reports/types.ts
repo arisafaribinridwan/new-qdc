@@ -1,6 +1,7 @@
 import type { exportJobs } from '../db/schema'
 import type { FqmsAccumulatedReportViewModel } from '../services/fqmsAccumulated'
 import type { ValidationRunResult } from '../services/validation'
+import type { FqmsWorstDefectsViewModel } from './fqmsWorstDefects'
 
 export type ReportScopeInput = {
   monthKey?: string
@@ -39,6 +40,7 @@ export type ReportViewModel = {
     denominatorStatus: 'ok' | 'missing_or_zero'
     computedAt: string
     accumulated: FqmsAccumulatedReportViewModel | null
+    worstDefects: FqmsWorstDefectsViewModel | null
     monthly: {
       status: 'ok' | 'check'
       salesQuantity: number

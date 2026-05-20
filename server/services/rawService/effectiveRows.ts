@@ -42,8 +42,9 @@ export function buildEffectiveRawServiceRows(
 
   return rows.map((row) => {
     const override = row.lineKey ? overridesByLineKey.get(row.lineKey) ?? null : null
-    const effectiveSymptom = override?.overrideSymptom ?? row.symptomName
-    const effectiveAction = override?.overrideAction ?? row.action
+    const rawValues = parseRawServiceJson(row.rawJson)
+    const effectiveSymptom = override?.overrideSymptom ?? firstText(row.symptomName, rawValues.symptom)
+    const effectiveAction = override?.overrideAction ?? firstText(row.action, rawValues.action)
     const masterAction = effectiveAction ? actionsByAction.get(normalizeActionKey(effectiveAction)) ?? null : null
 
     return {
@@ -65,8 +66,9 @@ export function buildEffectiveRawServiceRow(
   actionMappings: MasterAction[]
 ): EffectiveRawServiceRow {
   const actionByAction = new Map(actionMappings.map(action => [normalizeActionKey(action.action), action]))
-  const effectiveSymptom = override?.overrideSymptom ?? row.symptomName
-  const effectiveAction = override?.overrideAction ?? row.action
+  const rawValues = parseRawServiceJson(row.rawJson)
+  const effectiveSymptom = override?.overrideSymptom ?? firstText(row.symptomName, rawValues.symptom)
+  const effectiveAction = override?.overrideAction ?? firstText(row.action, rawValues.action)
   const masterAction = effectiveAction ? actionByAction.get(normalizeActionKey(effectiveAction)) ?? null : null
 
   return {
@@ -83,4 +85,39 @@ export function buildEffectiveRawServiceRow(
 
 function normalizeActionKey(action: string) {
   return action.trim().toUpperCase()
+}
+
+function parseRawServiceJson(rawJson: string): { symptom: string | null, action: string | null } {
+  try {
+    const parsed: unknown = JSON.parse(rawJson)
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { symptom: null, action: null }
+    }
+
+    return {
+      symptom: textValue((parsed as Record<string, unknown>).symptom),
+      action: textValue((parsed as Record<string, unknown>).action)
+    }
+  }
+  catch {
+    return { symptom: null, action: null }
+  }
+}
+
+function firstText(...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const text = textValue(value)
+
+    if (text) {
+      return text
+    }
+  }
+
+  return null
+}
+
+function textValue(value: unknown) {
+  const text = typeof value === 'string' ? value.trim() : ''
+  return text.length > 0 ? text : null
 }
