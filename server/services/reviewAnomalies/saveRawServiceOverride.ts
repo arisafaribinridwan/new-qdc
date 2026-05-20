@@ -4,6 +4,7 @@ import { getDb } from '../../db/client'
 import {
   createFactoryMappingsRepository,
   createMasterActionsRepository,
+  createRawSalesRowsRepository,
   createRawServiceLineOverridesRepository,
   createRawServiceRowsRepository,
   createScopesRepository
@@ -13,6 +14,8 @@ import { resolveImportScope } from '../imports/validators'
 import { ReviewAnomaliesError, ReviewAnomaliesNotFoundError } from './errors'
 import { getReviewLineKey, getReviewNotification, toReviewAnomalyItem } from './getReviewAnomalies'
 import type { RawServiceOverrideInput, RawServiceOverrideResult } from './types'
+
+type RawServiceLineOverride = NonNullable<RawServiceOverrideResult['override']>
 
 const overrideInputSchema = z.object({
   lineKey: z.string().trim().min(1),
@@ -57,6 +60,8 @@ export function saveRawServiceOverride(input: RawServiceOverrideInput = {}): Raw
     masterActions.map(action => [normalizeCode(action.action), action])
   )
   const normalizedOverrideAction = normalizeNullableCode(parsed.data.overrideAction)
+  const normalizedOverrideSymptom = normalizeNullableText(parsed.data.overrideSymptom)
+  const normalizedNote = normalizeNullableText(parsed.data.note)
   const overrideMasterAction = normalizedOverrideAction
     ? actionClassificationByAction.get(normalizedOverrideAction) ?? null
     : null
@@ -67,24 +72,41 @@ export function saveRawServiceOverride(input: RawServiceOverrideInput = {}): Raw
     })
   }
 
-  const override = createRawServiceLineOverridesRepository(database).upsert({
-    reportScopeId: scopeResult.scope.id,
-    notification,
-    lineKey: getReviewLineKey(row),
-    overrideSymptom: normalizeNullableText(parsed.data.overrideSymptom),
-    overrideAction: overrideMasterAction?.action ?? null,
-    note: normalizeNullableText(parsed.data.note)
-  })
+  const lineKey = getReviewLineKey(row)
+  const overridesRepository = createRawServiceLineOverridesRepository(database)
+  const shouldSaveOverride = Boolean(normalizedOverrideSymptom || normalizedOverrideAction || normalizedNote)
+  let override: RawServiceLineOverride | undefined
+
+  if (shouldSaveOverride) {
+    override = overridesRepository.upsert({
+      reportScopeId: scopeResult.scope.id,
+      notification,
+      lineKey,
+      overrideSymptom: normalizedOverrideSymptom,
+      overrideAction: overrideMasterAction?.action ?? null,
+      note: normalizedNote
+    })
+  }
+  else {
+    overridesRepository.deleteByScopeAndLineKey(scopeResult.scope.id, lineKey)
+  }
   const activeMappings = createFactoryMappingsRepository(database).listActiveByScope(
     scopeResult.product.id,
     scopeResult.manufacturer.id,
     scopeInput.monthKey
   )
   const activeFactoryCodes = new Set(activeMappings.map(mapping => mapping.factoryCode))
+  const activeFqmsModelCodes = new Set(
+    createRawSalesRowsRepository(database)
+      .findByReportScopeId(scopeResult.scope.id)
+      .filter(salesRow => salesRow.salesMonth === scopeInput.monthKey)
+      .map(salesRow => normalizeNullableCode(salesRow.modelCode))
+      .filter((modelCode): modelCode is string => Boolean(modelCode))
+  )
 
   return {
-    override,
-    item: toReviewAnomalyItem(row, override, actionClassificationByAction, scopeInput.monthKey, activeFactoryCodes)
+    override: override ?? null,
+    item: toReviewAnomalyItem(row, override, actionClassificationByAction, scopeInput.monthKey, activeFactoryCodes, activeFqmsModelCodes)
   }
 }
 

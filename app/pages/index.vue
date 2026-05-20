@@ -2,6 +2,7 @@
 type ImportType = 'sales' | 'raw_service'
 type ActionKey = ImportType | 'reprocess' | 'validation' | 'export' | 'refresh' | 'override'
 type IssueFilter = 'all' | 'blocking' | 'non_blocking'
+type ReviewImpactFilter = 'fqms' | 'fcost' | 'all'
 type ReviewAnomalyCode =
   | 'MISSING_MODEL'
   | 'KEYDATE_OUTLIER'
@@ -200,9 +201,23 @@ type ReviewAnomalyItem = {
 }
 
 type ReviewAnomaliesResult = {
+  impactFilter: ReviewImpactFilter
   totalItemCount: number
+  allItemCount: number
+  impactSummary: Record<ReviewImpactFilter, number>
   summary: Record<ReviewAnomalyCode, number>
   items: ReviewAnomalyItem[]
+}
+
+type ReviewActionOption = {
+  action: string
+  category: string
+  defect: string
+  isActive: boolean
+}
+
+type ReviewActionOptionsResult = {
+  items: ReviewActionOption[]
 }
 
 type OverrideDraft = {
@@ -226,9 +241,14 @@ const lastImport = ref<ImportSummary | null>(null)
 const validationResult = ref<ValidationRunResult | null>(null)
 const exportResult = ref<ReportExportResult | null>(null)
 const issueFilter = ref<IssueFilter>('all')
+const reviewImpactFilter = ref<ReviewImpactFilter>('fqms')
 const overrideDrafts = ref<Record<string, OverrideDraft>>({})
 
 const query = { ...scope }
+const reviewAnomaliesQuery = computed(() => ({
+  ...query,
+  impact: reviewImpactFilter.value
+}))
 
 const {
   data: importStatus,
@@ -264,7 +284,15 @@ const {
   data: reviewAnomalies,
   pending: reviewAnomaliesPending,
   refresh: refreshReviewAnomalies
-} = await useAsyncData('slice0-review-anomalies', () => $fetch<ReviewAnomaliesResult>('/api/review-anomalies', { query }))
+} = await useAsyncData(
+  'slice0-review-anomalies',
+  () => $fetch<ReviewAnomaliesResult>('/api/review-anomalies', { query: reviewAnomaliesQuery.value }),
+  { watch: [reviewImpactFilter] }
+)
+
+const {
+  data: reviewActionOptions
+} = await useAsyncData('slice0-review-action-options', () => $fetch<ReviewActionOptionsResult>('/api/review-anomalies/action-options'))
 
 const currentValidation = computed(() => validationResult.value ?? latestValidation.value)
 
@@ -354,7 +382,14 @@ const stagingCompareEntries = computed(() => Object.entries(currentValidation.va
   .filter(([, count]) => count > 0))
 const reviewSummaryEntries = computed(() => Object.entries(reviewAnomalies.value?.summary ?? {})
   .filter(([, count]) => count > 0))
-const visibleReviewItems = computed(() => (reviewAnomalies.value?.items.slice(0, 8) ?? []).map(item => ({
+const reviewActionOptionItems = computed(() => reviewActionOptions.value?.items ?? [])
+const filteredReviewAnomalyItems = computed(() => reviewAnomalies.value?.items ?? [])
+const reviewImpactCounts = computed<Record<ReviewImpactFilter, number>>(() => reviewAnomalies.value?.impactSummary ?? {
+  fqms: 0,
+  fcost: 0,
+  all: 0
+})
+const visibleReviewItems = computed(() => filteredReviewAnomalyItems.value.slice(0, 8).map(item => ({
   ...item,
   draft: overrideDrafts.value[item.lineKey] ?? {
     overrideSymptom: '',
@@ -413,6 +448,7 @@ async function uploadFile(type: ImportType, event: Event) {
     })
 
     await reprocess(false)
+    validationResult.value = await validateScope()
     await refreshData()
     toast.add({
       title: 'Import selesai',
@@ -463,11 +499,7 @@ async function runValidation() {
   activeAction.value = 'validation'
 
   try {
-    validationResult.value = await $fetch<ValidationRunResult>('/api/validation/run', {
-      method: 'POST',
-      body: scope
-    })
-    await refreshLatestValidation()
+    validationResult.value = await validateScope()
 
     toast.add({
       title: validationResult.value.exportReady ? 'Validation OK' : 'Validation perlu review',
@@ -534,10 +566,19 @@ async function saveOverride(item: ReviewAnomalyItem) {
       }
     })
 
+    await $fetch('/api/import/reprocess', {
+      method: 'POST',
+      body: scope
+    })
+
+    validationResult.value = await validateScope()
+
     await Promise.all([
       refreshReviewAnomalies(),
       refreshImportStatus(),
-      refreshLatestValidation()
+      refreshViewModel(),
+      refreshLatestValidation(),
+      refreshExportStatus()
     ])
     toast.add({
       title: 'Override tersimpan',
@@ -673,6 +714,20 @@ function getExportFlowDetail() {
 
 function issueCodeLabel(code: string) {
   return code.replace(/_/g, ' ')
+}
+
+async function validateScope() {
+  const result = await $fetch<ValidationRunResult>('/api/validation/run', {
+    method: 'POST',
+    body: scope
+  })
+  await refreshLatestValidation()
+
+  return result
+}
+
+function reviewActionOptionLabel(option: ReviewActionOption) {
+  return `${option.category} / ${option.defect}`
 }
 
 function sourceFieldValue(value: number | string | null | undefined) {
@@ -916,7 +971,7 @@ function reviewSourceFields(item: ReviewAnomalyItem) {
               </div>
               <div class="flex justify-between gap-3">
                 <dt class="text-muted">PPM</dt>
-                <dd class="font-medium">{{ formatNumber(viewModel?.fqms?.ppm, 6) }}</dd>
+                <dd class="font-medium">{{ formatNumber(viewModel?.fqms?.ppm) }}</dd>
               </div>
             </dl>
           </div>
@@ -1086,12 +1141,36 @@ function reviewSourceFields(item: ReviewAnomalyItem) {
             <p class="mt-1 text-sm text-muted">Line-level raw service review untuk missing mapping, outlier, dan override action.</p>
           </div>
           <UBadge :color="visibleReviewItems.length ? 'warning' : 'success'" variant="subtle">
-            {{ formatNumber(reviewAnomalies?.totalItemCount ?? 0) }} rows
+            {{ formatNumber(reviewAnomalies?.totalItemCount ?? 0) }} / {{ formatNumber(reviewAnomalies?.allItemCount ?? 0) }} rows
           </UBadge>
         </div>
       </template>
 
       <div class="space-y-4">
+        <div class="flex flex-wrap gap-2">
+          <UButton
+            :label="`FQMS-impact (${formatNumber(reviewImpactCounts.fqms)})`"
+            size="xs"
+            :color="reviewImpactFilter === 'fqms' ? 'primary' : 'neutral'"
+            :variant="reviewImpactFilter === 'fqms' ? 'solid' : 'subtle'"
+            @click="reviewImpactFilter = 'fqms'"
+          />
+          <UButton
+            :label="`F-COST-impact (${formatNumber(reviewImpactCounts.fcost)})`"
+            size="xs"
+            :color="reviewImpactFilter === 'fcost' ? 'primary' : 'neutral'"
+            :variant="reviewImpactFilter === 'fcost' ? 'solid' : 'subtle'"
+            @click="reviewImpactFilter = 'fcost'"
+          />
+          <UButton
+            :label="`All (${formatNumber(reviewImpactCounts.all)})`"
+            size="xs"
+            :color="reviewImpactFilter === 'all' ? 'primary' : 'neutral'"
+            :variant="reviewImpactFilter === 'all' ? 'solid' : 'subtle'"
+            @click="reviewImpactFilter = 'all'"
+          />
+        </div>
+
         <div
           v-if="reviewSummaryEntries.length"
           class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5"
@@ -1105,6 +1184,15 @@ function reviewSourceFields(item: ReviewAnomalyItem) {
             <p class="mt-1 text-lg font-semibold">{{ formatNumber(count) }}</p>
           </div>
         </div>
+
+        <datalist id="review-action-options">
+          <option
+            v-for="option in reviewActionOptionItems"
+            :key="option.action"
+            :value="option.action"
+            :label="reviewActionOptionLabel(option)"
+          />
+        </datalist>
 
         <div
           v-if="reviewAnomaliesPending"
@@ -1182,6 +1270,7 @@ function reviewSourceFields(item: ReviewAnomalyItem) {
                 v-model="item.draft.overrideAction"
                 placeholder="Override action"
                 icon="i-lucide-wrench"
+                list="review-action-options"
               />
               <UInput
                 v-model="item.draft.note"

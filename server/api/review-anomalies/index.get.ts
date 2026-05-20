@@ -10,7 +10,8 @@ export default defineEventHandler((event) => {
     return getReviewAnomalies({
       monthKey: getQueryValue(query.monthKey),
       productCode: getQueryValue(query.productCode),
-      manufacturerCode: getQueryValue(query.manufacturerCode)
+      manufacturerCode: getQueryValue(query.manufacturerCode),
+      impact: getQueryValue(query.impact)
     })
   }
   catch (error) {

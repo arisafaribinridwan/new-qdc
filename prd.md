@@ -1,6 +1,6 @@
 # PRD — QRCC Data Center FQMS/F-COST Automated Monthly Workflow
 
-> **Versi**: 3.2 · **Terakhir diperbarui**: 2026-05-19
+> **Versi**: 3.3 · **Terakhir diperbarui**: 2026-05-20
 >
 > Dokumen ini adalah **PRD core utama** untuk QRCC Data Center. Detail frontend, backend, report specification, dan task implementasi dipisahkan ke dokumen turunan agar lebih mudah dipelihara.
 
@@ -57,6 +57,7 @@ Aplikasi tidak boleh menjadikan Excel sebagai database. Excel hanya output/templ
 9. **Sales report model grouping and period** — Sales CSV memakai `Model` sebagai model asli/source untuk audit, `Report Model` sebagai model laporan untuk grouping/agregasi, dan `Sales Month` sebagai periode data sales format `YYYY-MM`. Required header matching harus toleran terhadap kapitalisasi seperti `report model` atau `Report model`.
 10. **Import idempotency** — Import ulang tidak boleh membuat double count. Sales memakai replace per month/scope/import type, sedangkan raw service harus bergerak ke staging compare + upsert per notification/line agar revisi kasus bisa dilacak.
 11. **Raw review override protection** — Koreksi manual raw service hanya untuk baris tertentu, terutama `symptom` dan `action`; koreksi tersebut tidak boleh tertimpa diam-diam oleh import ulang.
+12. **FQMS reportable claim rule** — Raw service hanya menjadi claim FQMS jika `job_sheet_section = 1`, model masuk daftar model laporan FQMS, action terklasifikasi lewat master action, category adalah `DEFECT` atau `NON_DEFECT`, dan defect terisi bukan `N/A`. Mapping master action ke `N/A` berarti exclude dari claim FQMS, bukan anomaly.
 
 ---
 
@@ -131,7 +132,7 @@ Raw service manual review target:
 - `defect_category` dan `defect` tidak diedit manual langsung; keduanya dihitung ulang dari effective action memakai master action.
 - Effective data untuk report: override value jika ada, selain itu source value dari import terakhir.
 - Master action minimal berisi `Action`, `Category`, dan `Defect`, seperti referensi `.doc/dummy master action.csv`.
-- Contoh: jika line dioverride menjadi `VERIFIED_OK`, master action menentukan `Category = N/A` dan `Defect = N/A`, sehingga line tersebut tidak dihitung sebagai defect claim FQMS.
+- Contoh: jika line dioverride menjadi `VERIFIED_OK`, master action menentukan `Category = N/A` dan `Defect = N/A`, sehingga line tersebut tidak dihitung sebagai claim FQMS.
 
 Export snapshot target:
 
@@ -154,7 +155,11 @@ Scope Slice 0:
 - Master data awal memakai seed + edit minimal dari Review Anomalies, bukan full CRUD.
 - Re-import sales untuk month + product + scope + import type yang sama memakai automatic replace.
 - Raw service Phase 3 replace mode adalah baseline sementara untuk membuktikan parser/aggregation; target operasionalnya adalah staging compare + upsert per notification/line dengan manual override protection sebelum workflow raw review dipakai nyata.
-- FQMS claim quantity dihitung dari raw service `job_sheet_section = 1`.
+- FQMS claim quantity dihitung dari raw service reportable: `job_sheet_section = 1`, model masuk daftar laporan FQMS, action valid di master action, category `DEFECT`/`NON_DEFECT`, dan defect bukan kosong/`N/A`.
+- Raw service `job_sheet_section = 0` tidak wajib punya action/defect untuk laporan FQMS dan tidak boleh membuat Review Anomalies FQMS ramai hanya karena field tersebut kosong.
+- Action yang valid tetapi master action-nya menghasilkan `N/A` tidak dihitung sebagai claim FQMS dan tidak menjadi `ACTION_UNCLASSIFIED`.
+- PPM FQMS Slice 0 dibulatkan ke atas ke bilangan bulat untuk preview/export ringkas.
+- Master model-series FQMS per product/manufacturer/month belum final; baseline Slice 0 sementara memakai model dari sales bulan berjalan sebagai daftar model aktif.
 - F-COST dihitung dari semua cost rows valid.
 - Cost disimpan dalam rupiah asli; scaling hanya untuk tampilan/export.
 - Count/quantity harus exact terhadap referensi April 2026; cost boleh berbeda hanya karena pembulatan presentasi.
@@ -261,6 +266,7 @@ MVP dianggap selesai jika user dapat menyelesaikan satu siklus bulanan penuh tan
 | Defect Status | Status besar dari raw `defect_category`: DEFECT/NON_DEFECT/N/A |
 | Defect Code | Kategori detail dari raw `defect`: PANEL/MAIN_UNIT/USER/etc |
 | Master Action | Reference mapping `Action -> Category + Defect` untuk menentukan effective defect classification |
+| Reportable FQMS Claim | Raw service section 1 untuk model laporan aktif dengan action valid, category `DEFECT`/`NON_DEFECT`, dan defect bukan `N/A` |
 | Long-format | Data disimpan baris per bulan/model/category |
 | Wide-format | Data disusun kolom per bulan untuk report |
 | View Model | Struktur data siap render report/export |
@@ -291,3 +297,6 @@ MVP dianggap selesai jika user dapat menyelesaikan satu siklus bulanan penuh tan
 18. Manual raw service review berlaku per line untuk `symptom` dan `action`; override tidak boleh tertimpa import ulang.
 19. `defect_category` dan `defect` raw service dihitung dari effective action memakai master action, bukan diedit manual langsung.
 20. Import Center harus menampilkan status bulan terakhir dan kelengkapan data per month/product/scope/import type.
+21. FQMS claim quantity hanya menghitung reportable FQMS claims; category/defect `N/A` dikeluarkan dari claim dan bukan `ACTION_UNCLASSIFIED`.
+22. `ACTION_UNCLASSIFIED` hanya untuk row FQMS-impact yang action-nya kosong atau action tidak ditemukan di master action.
+23. PPM FQMS preview/export ringkas dibulatkan ke atas.

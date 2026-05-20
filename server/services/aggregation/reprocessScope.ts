@@ -49,24 +49,26 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
       .filter(row => row.keydate === scopeInput.monthKey)
 
     const salesQuantity = sumBy(salesRows, row => row.quantity)
-    const claimRows = serviceRows.filter(row => row.jobSheetSection === claimJobSheetSection)
+    const activeFqmsModelCodes = createActiveFqmsModelCodes(salesRows)
+    const fqmsCandidateRows = serviceRows.filter(row => isFqmsCandidateRow(row, activeFqmsModelCodes))
+    const claimRows = fqmsCandidateRows.filter(isFqmsReportableClaimRow)
     const defectStatusCounts = countDefectStatuses(claimRows)
     const defectCount = defectStatusCounts.DEFECT ?? 0
     const nonDefectCount = defectStatusCounts.NON_DEFECT ?? 0
-    const unclassifiedClaimRows = claimRows.length - defectCount - nonDefectCount
-    const ppm = salesQuantity > 0 ? (claimRows.length / salesQuantity) * 1_000_000 : null
+    const unclassifiedClaimRows = fqmsCandidateRows.length - claimRows.length
+    const ppm = salesQuantity > 0 ? Math.ceil((claimRows.length / salesQuantity) * 1_000_000) : null
 
     const fqmsDetails: FqmsAggregationDetails = {
       monthKey: scopeInput.monthKey,
       salesRows: salesRows.length,
       claimRows: claimRows.length,
-      ignoredServiceRows: serviceRows.length - claimRows.length,
+      ignoredServiceRows: serviceRows.length - fqmsCandidateRows.length,
       unclassifiedClaimRows,
       ppm,
       denominatorStatus: salesQuantity > 0 ? 'ok' : 'missing_or_zero',
       defectStatusCounts,
       manualOverrideRows: serviceRows.filter(row => row.hasManualOverride).length,
-      missingEffectiveActionMappings: serviceRows.filter(row => row.effectiveAction && !row.masterAction).length
+      missingEffectiveActionMappings: fqmsCandidateRows.filter(row => row.effectiveAction && !row.masterAction).length
     }
 
     const fqmsStatus = salesImport && serviceImport && salesQuantity > 0 ? 'ok' : 'check'
@@ -152,6 +154,30 @@ function countDefectStatuses(rows: EffectiveRawServiceRow[]) {
   }, {})
 }
 
+function createActiveFqmsModelCodes(rows: Array<{ modelCode: string | null }>) {
+  return new Set(rows
+    .map(row => normalizeModelCode(row.modelCode))
+    .filter((modelCode): modelCode is string => Boolean(modelCode)))
+}
+
+function isFqmsCandidateRow(row: EffectiveRawServiceRow, activeFqmsModelCodes: Set<string>) {
+  if (row.jobSheetSection !== claimJobSheetSection) {
+    return false
+  }
+
+  const modelCode = normalizeModelCode(row.modelCode)
+  return !modelCode || activeFqmsModelCodes.size === 0 || activeFqmsModelCodes.has(modelCode)
+}
+
+function isFqmsReportableClaimRow(row: EffectiveRawServiceRow) {
+  const status = normalizeDefectStatus(row.effectiveDefectCategory)
+  const defect = normalizeRequiredFqmsValue(row.effectiveDefect)
+
+  return Boolean(row.effectiveAction?.trim())
+    && (status === 'DEFECT' || status === 'NON_DEFECT')
+    && Boolean(defect)
+}
+
 function normalizeDefectStatus(value: string | null) {
   const normalized = (value ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_')
 
@@ -160,5 +186,15 @@ function normalizeDefectStatus(value: string | null) {
   }
 
   return normalized
+}
+
+function normalizeRequiredFqmsValue(value: string | null) {
+  const normalized = (value ?? '').trim().toUpperCase()
+  return normalized && normalized !== 'N/A' ? normalized : null
+}
+
+function normalizeModelCode(value: string | null) {
+  const normalized = (value ?? '').trim().toUpperCase()
+  return normalized.length > 0 ? normalized : null
 }
 
