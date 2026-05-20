@@ -1,6 +1,6 @@
 # Spec Report FQMS — QRCC Data Center
 
-> **Versi**: 1.1 · **Terakhir diperbarui**: 2026-05-20
+> **Versi**: 1.2 · **Terakhir diperbarui**: 2026-05-21
 >
 > Dokumen ini adalah spesifikasi report FQMS. Untuk PRD core lihat [`prd.md`](prd.md). Untuk backend view model dan API lihat [`backend.md`](backend.md).
 
@@ -108,6 +108,13 @@ target_ppm = target monthly PPM fiscal half yang berlaku pada bulan tersebut
 
 Result dihitung dengan formula Section C untuk snapshot bulan tersebut.
 
+Implementasi Slice 0.1:
+
+- Snapshot bulanan disimpan di SQLite table `fqms_monitoring_monthly_snapshots` dari sheet `summary` 14 workbook monitoring aktif.
+- Importer menyimpan `passing_month`, `sales_qty`, `accumulated_sales`, `monthly_defect_qty`, `accumulated_defect_qty`, `monthly_non_defect_qty`, dan `average_defect_ppm` per model per bulan beserta `source_json`.
+- Jika cached result `ACC SALES QTY` atau `AVERAGE DEFECT PPM` kosong di workbook, nilai disimpan `NULL` dan Section A mengembalikan `CHECK`/blank untuk result PPM, bukan angka palsu.
+- Karena target table belum tersedia, target monthly PPM sementara memakai baseline template `383` dengan `targetSource = template_baseline` dan status `CHECK` sampai target master dibuat.
+
 ### 12.7 Section B — Acceptance Ratio
 
 Section B memakai periode bulan dinamis seperti Section A. Nilai OK dan NG dihitung dari snapshot model aktif/monitoring pada bulan tersebut.
@@ -120,6 +127,13 @@ acceptance_ratio = ok_models / total_model
 ```
 
 Label fiscal half seperti `2025FH` mengambil nilai dari data bulan terakhir di fiscal half tersebut, contoh `2025FH` memakai snapshot September 2025.
+
+Implementasi Slice 0.1:
+
+- Section B membaca persisted monthly snapshot yang sama dengan Section A.
+- `OK/NG` dihitung hanya jika `average_defect_ppm` atau denominator `accumulated_sales × passing_month` tersedia dan target monthly PPM tersedia.
+- Jika PPM model belum dapat dibuktikan karena cached denominator kosong, `ok_models`, `ng_models`, dan `acceptance_ratio` dikosongkan serta `checkModelCount` menunjukkan jumlah model yang perlu sumber sales history bulanan.
+- Export Excel menghapus nilai stale template pada row Acceptance Ratio dan mengisi hanya label/count/ratio yang ada di view model.
 
 ### 12.8 Section D — Worst Defect
 

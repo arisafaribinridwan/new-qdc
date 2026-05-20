@@ -139,6 +139,8 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
   worksheet.getCell('D3').value = `: ${viewModel.scope.productCode}`
   worksheet.getCell('D4').value = `: ${viewModel.scope.manufacturerCode}`
   worksheet.getCell('R4').value = createExcelMonthDate(viewModel.scope.calendarYear, viewModel.scope.calendarMonth)
+  fillFqmsQualityTrendSection(worksheet, viewModel)
+  fillFqmsAcceptanceRatioSection(worksheet, viewModel)
   fillFqmsDetailModelSection(worksheet, viewModel)
   fillFqmsWorstDefectSection(worksheet, viewModel)
 
@@ -162,6 +164,12 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
     ['Worst Defect Source', viewModel.fqms?.worstDefects?.source ?? 'missing'],
     ['Worst Defect Status', viewModel.fqms?.worstDefects?.status ?? 'missing'],
     ['Worst Defect Missing History Buckets', viewModel.fqms?.worstDefects?.missingHistoryBuckets.join(', ') ?? null],
+    ['Monitoring Snapshot Source', viewModel.fqms?.monitoringSnapshots?.source ?? 'missing'],
+    ['Monitoring Snapshot Status', viewModel.fqms?.monitoringSnapshots?.status ?? 'missing'],
+    ['Monitoring Snapshot Rows', viewModel.fqms?.monitoringSnapshots?.snapshotCount ?? null],
+    ['Monitoring Snapshot Missing Acc Sales', viewModel.fqms?.monitoringSnapshots?.missingAccumulatedSalesCount ?? null],
+    ['Monitoring Snapshot Missing Avg PPM', viewModel.fqms?.monitoringSnapshots?.missingAverageDefectPpmCount ?? null],
+    ['Monitoring Target Source', viewModel.fqms?.monitoringSnapshots?.targetSource ?? 'missing'],
     ['Computed At', viewModel.fqms?.computedAt ?? null]
   ])
 
@@ -169,6 +177,45 @@ function fillFqmsTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewModel
   summary.getCell(14, 2).numFmt = '#,##0.000000'
   summary.getCell(15, 2).numFmt = '#,##0.000000'
   summary.getCell(16, 2).numFmt = '#,##0.000000'
+}
+
+function fillFqmsQualityTrendSection(worksheet: ExcelJS.Worksheet, viewModel: ReportViewModel) {
+  const months = viewModel.fqms?.monitoringSnapshots?.qualityTrend.months ?? []
+  const sourceColumns = ['DZ', 'EA', 'EB', 'EC', 'ED', 'EE'] as const
+
+  for (const [index, column] of sourceColumns.entries()) {
+    const month = months[index]
+
+    worksheet.getColumn(column).hidden = true
+    worksheet.getCell(`${column}3`).value = month ? monthKeyToDate(month.monthKey) : null
+    worksheet.getCell(`${column}4`).value = roundedNumber(month?.targetPpm ?? null)
+    worksheet.getCell(`${column}5`).value = roundedNumber(month?.resultPpm ?? null)
+    worksheet.getCell(`${column}3`).numFmt = 'mmm-yy'
+    worksheet.getCell(`${column}4`).numFmt = '#,##0'
+    worksheet.getCell(`${column}5`).numFmt = '#,##0'
+  }
+}
+
+function fillFqmsAcceptanceRatioSection(worksheet: ExcelJS.Worksheet, viewModel: ReportViewModel) {
+  const acceptance = viewModel.fqms?.monitoringSnapshots?.acceptanceRatio
+  const periods = [acceptance?.fiscalHalf ?? null, ...(acceptance?.months ?? [])]
+  const columns = ['M', 'N', 'O', 'P', 'Q', 'R', 'S']
+
+  for (let index = 0; index < columns.length; index += 1) {
+    const column = columns[index]
+    const period = periods[index]
+
+    worksheet.getCell(`${column}7`).value = period ? (index === 0 ? period.label : monthKeyToDate(period.monthKey)) : null
+    worksheet.getCell(`${column}8`).value = period?.totalModelCount ?? null
+    worksheet.getCell(`${column}9`).value = period?.okModelCount ?? null
+    worksheet.getCell(`${column}10`).value = period?.ngModelCount ?? null
+    worksheet.getCell(`${column}11`).value = period?.acceptanceRatio ?? null
+    worksheet.getCell(`${column}7`).numFmt = index === 0 ? '@' : 'mmm-yy'
+    worksheet.getCell(`${column}8`).numFmt = '#,##0'
+    worksheet.getCell(`${column}9`).numFmt = '#,##0'
+    worksheet.getCell(`${column}10`).numFmt = '#,##0'
+    worksheet.getCell(`${column}11`).numFmt = '0.0%'
+  }
 }
 
 function fillFqmsDetailModelSection(worksheet: ExcelJS.Worksheet, viewModel: ReportViewModel) {

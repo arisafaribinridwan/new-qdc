@@ -1,5 +1,6 @@
 import type { exportJobs } from '../db/schema'
 import type { FqmsAccumulatedReportViewModel } from '../services/fqmsAccumulated'
+import type { FqmsMonitoringSnapshotsViewModel } from '../services/fqmsMonitoringSnapshots'
 import type { ValidationRunResult } from '../services/validation'
 import type { FqmsWorstDefectsViewModel } from './fqmsWorstDefects'
 
@@ -41,6 +42,7 @@ export type ReportViewModel = {
     computedAt: string
     accumulated: FqmsAccumulatedReportViewModel | null
     worstDefects: FqmsWorstDefectsViewModel | null
+    monitoringSnapshots: FqmsMonitoringSnapshotsViewModel | null
     monthly: {
       status: 'ok' | 'check'
       salesQuantity: number

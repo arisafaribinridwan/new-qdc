@@ -6,6 +6,7 @@ import {
   createScopesRepository
 } from '../repositories'
 import { getFqmsAccumulatedReportViewModel } from '../services/fqmsAccumulated'
+import { getFqmsMonitoringSnapshotsViewModel } from '../services/fqmsMonitoringSnapshots'
 import { importTypes } from '../services/imports/constants'
 import { resolveImportScope } from '../services/imports/validators'
 import { ReportNotFoundError } from './errors'
@@ -72,6 +73,13 @@ export function getReportViewModel(input: ReportScopeInput = {}): ReportViewMode
     accumulated: accumulatedFqms,
     db: database
   })
+  const monitoringSnapshots = getFqmsMonitoringSnapshotsViewModel({
+    reportScopeId: scopeResult.scope.id,
+    productId: scopeResult.product.id,
+    manufacturerId: scopeResult.manufacturer.id,
+    monthKey: scopeInput.monthKey,
+    db: database
+  })
   const reportFqms = accumulatedFqms
     ? {
         source: 'accumulated' as const,
@@ -86,6 +94,7 @@ export function getReportViewModel(input: ReportScopeInput = {}): ReportViewMode
         computedAt: accumulatedFqms.computedAt,
         accumulated: accumulatedFqms,
         worstDefects,
+        monitoringSnapshots,
         monthly: monthlyFqms
       }
     : monthlyFqms
@@ -94,6 +103,7 @@ export function getReportViewModel(input: ReportScopeInput = {}): ReportViewMode
           ...monthlyFqms,
           accumulated: null,
           worstDefects: null,
+          monitoringSnapshots,
           monthly: monthlyFqms
         }
       : null

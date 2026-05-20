@@ -50,6 +50,13 @@
       "when": 1779270000000,
       "tag": "0006_fqms_historical_defect_rows",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1779316709000,
+      "tag": "0007_tough_inhumans",
+      "breakpoints": true
     }
   ]
 }

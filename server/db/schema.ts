@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const products = sqliteTable('products', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -118,6 +118,29 @@ export const fqmsHistoricalDefectRows = sqliteTable('fqms_historical_defect_rows
   index('fqms_historical_defect_rows_scope_keydate_idx').on(table.reportScopeId, table.keydate),
   index('fqms_historical_defect_rows_scope_model_idx').on(table.reportScopeId, table.reportModelCode),
   index('fqms_historical_defect_rows_scope_defect_idx').on(table.reportScopeId, table.defectCategory, table.defect)
+])
+
+export const fqmsMonitoringMonthlySnapshots = sqliteTable('fqms_monitoring_monthly_snapshots', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  reportScopeId: integer('report_scope_id').notNull().references(() => reportScopes.id, { onDelete: 'cascade' }),
+  sourceModelCode: text('source_model_code').notNull(),
+  reportModelCode: text('report_model_code').notNull(),
+  monitoringFile: text('monitoring_file').notNull(),
+  monthKey: text('month_key').notNull(),
+  passingMonth: integer('passing_month'),
+  salesQty: integer('sales_qty'),
+  accumulatedSales: integer('accumulated_sales'),
+  monthlyDefectQty: integer('monthly_defect_qty').notNull().default(0),
+  accumulatedDefectQty: integer('accumulated_defect_qty').notNull().default(0),
+  monthlyNonDefectQty: integer('monthly_non_defect_qty').notNull().default(0),
+  averageDefectPpm: real('average_defect_ppm'),
+  sourceJson: text('source_json').notNull(),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, table => [
+  uniqueIndex('fqms_monitoring_monthly_snapshots_scope_file_month_unique').on(table.reportScopeId, table.monitoringFile, table.monthKey),
+  index('fqms_monitoring_monthly_snapshots_scope_month_idx').on(table.reportScopeId, table.monthKey),
+  index('fqms_monitoring_monthly_snapshots_scope_model_idx').on(table.reportScopeId, table.reportModelCode)
 ])
 
 export const dataImports = sqliteTable('data_imports', {

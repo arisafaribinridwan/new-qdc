@@ -1,6 +1,6 @@
 # Task Plan Implementasi — QRCC Data Center
 
-> **Versi**: 2.3 · **Terakhir diperbarui**: 2026-05-20
+> **Versi**: 2.4 · **Terakhir diperbarui**: 2026-05-21
 >
 > Checklist ini memakai pendekatan **data-truth-first vertical slice**. Milestone pertama bukan jumlah halaman, tetapi bukti bahwa workflow April 2026 LCD LOCAL menghasilkan angka FQMS/F-COST yang akurat, auditable, dan bisa diexport.
 
@@ -167,6 +167,8 @@ Catatan status untuk lanjut kerja di PC lain:
 - Untuk PC lain, jalankan ulang proof dengan `node scripts/proof-fqms-april.mjs <monitoring-dir> <sales-csv-path> <output-csv-path>` jika path lokal berbeda.
 - Untuk mengisi SQLite dari workbook yang sudah disertakan di repo, jalankan `node scripts/import-fqms-accumulated-monitoring.mjs`. Optional args: `<report-month> <monitoring-dir> <proof-csv-path> <database-path>`.
 - Untuk mengisi raw historis Section D dari workbook monitoring, jalankan `node scripts/import-fqms-historical-defects.mjs`. Optional args: `<report-month> <monitoring-dir> <database-path>`.
+- Untuk mengisi monthly monitoring snapshot Section A/B dari sheet `summary`, jalankan `node scripts/import-fqms-monitoring-monthly-snapshots.mjs`. Optional args: `<report-month> <monitoring-dir> <database-path>`.
+- Snapshot Section A/B April 2026 sudah terimport `171` rows dan cocok untuk accumulated defect `4,061` serta accumulated non-defect `1,025`, tetapi `ACC SALES QTY` dan `AVERAGE DEFECT PPM` tidak punya cached value sehingga result PPM/OK-NG adalah CHECK sampai sumber sales history bulanan tersedia.
 - `storage/proofs/` bisa ignored oleh git; jangan menganggap output CSV selalu ikut repo. Script proof adalah sumber regenerasi utama.
 - Final cross-check Phase 4 sudah dikonfirmasi cocok semua terhadap referensi FQMS/F-COST April 2026 LCD LOCAL. Tidak ada mismatch blocking yang tersisa untuk Phase 4.
 
@@ -182,6 +184,7 @@ Catatan status untuk lanjut kerja di PC lain:
 - [x] Persist proof FQMS akumulasi April 2026 per model ke SQLite untuk dipakai service/view model.
 - [x] Tambahkan script repeatable untuk memverifikasi 14 workbook monitoring aktif `.doc/raw` terhadap proof April 2026 dan replace data SQLite jika cocok.
 - [x] Tambahkan tabel dan importer raw historis FQMS dari sheet `raw` workbook monitoring untuk Section D.
+- [x] Tambahkan tabel dan importer monthly monitoring snapshot dari sheet `summary` workbook monitoring untuk Section A/B.
 - [x] Build reusable FQMS accumulated service yang menghitung exposure dan PPM dari persisted rows + master `fqms_model_series`.
 - [x] Bandingkan FQMS quantity/count terhadap referensi Excel/PDF.
 - [x] Bandingkan F-COST amount terhadap referensi Excel/PDF.
@@ -242,6 +245,8 @@ Tujuan: preview dan Excel tidak punya logic hitung berbeda.
 - [x] Pastikan Section C export mengurutkan model dari launching month paling lama, membulatkan angka tampilan ke atas tanpa desimal, dan mengosongkan `L37:M37`.
 - [x] Pastikan style total label Section C `C37:E37` merge dengan fill `#31869B`, font Calibri 9, dan text putih.
 - [x] Build FQMS Section D Worst Defect view model dari effective raw service rows + master action + denominator Section C.
+- [x] Build FQMS Section A/B view model dari persisted monthly monitoring snapshots, dengan CHECK saat cached denominator summary kosong.
+- [x] Map Section A Quality Trend source data dan Section B Acceptance Ratio ke sheet utama `FQMS`, membersihkan nilai stale template saat snapshot tersedia tetapi PPM belum terbukti.
 - [x] Map Section D Worst Defect ke sheet utama `FQMS`, bersihkan placeholder `Model A`, dan isi bucket `~Jan'26`, `Feb'26`, `Mar'26`, `Apr'26` dari `fqms_historical_defect_rows`.
 - [x] Map F-COST view model ke `templates/excel/FCOST - LCD LOCAL.xlsx`.
 - [x] Implement `POST /api/reports/export-excel`.
