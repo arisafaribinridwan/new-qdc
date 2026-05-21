@@ -1,6 +1,6 @@
 # Task Plan Implementasi — QRCC Data Center
 
-> **Versi**: 2.4 · **Terakhir diperbarui**: 2026-05-21
+> **Versi**: 2.5 · **Terakhir diperbarui**: 2026-05-21
 >
 > Checklist ini memakai pendekatan **data-truth-first vertical slice**. Milestone pertama bukan jumlah halaman, tetapi bukti bahwa workflow April 2026 LCD LOCAL menghasilkan angka FQMS/F-COST yang akurat, auditable, dan bisa diexport.
 
@@ -159,6 +159,9 @@ Catatan status untuk lanjut kerja di PC lain:
 - Untuk menyelesaikan proof FQMS exact, siapkan data akumulasi: sales historis per model dari launching month sampai report month, claim historis per model untuk `DEFECT`/`NON_DEFECT`, mapping raw model ke model report, launching month per model, dan target monthly PPM per fiscal half.
 - Alternatif cepat: siapkan trusted CSV/workbook FQMS accumulated reference berisi `report_month`, `report_model`, `launching_month`, `accumulated_sales`, `defect_qty`, `non_defect_qty`, `total_claim_qty`, dan `target_ppm`.
 - Data sales akumulasi hingga April 2026 sudah tersedia dari `C:\Users\GAY0700622\Documents\sales akumulasi into april 2026.csv`.
+- Data sales history bulanan verified untuk LCD LOCAL sudah tersedia di `.doc/sales-history-lcd-local.csv` dengan kolom `Report Model`, `Sales Month`, `Sales Amount`, dan `Sales Qty`.
+- Import sales history verified memakai `scripts/import-sales-history.mjs`. Script ini menggabungkan duplicate `Report Model + Sales Month` dengan menjumlahkan `Sales Qty` dan `Sales Amount`, lalu replace table `sales_history_rows`, raw sales report month, FQMS accumulated sales, monitoring snapshots, serta summary FQMS/F-COST.
+- Hasil import sales history verified: source CSV `825` rows menjadi `822` rows master setelah duplicate digabung. April 2026 menghasilkan sales qty `56,057` dan sales amount `150,328,909,537`. Row `797` dan `798` untuk `2TC24HD1500I / 2026-04` digabung menjadi qty `7,232` dan amount `7,527,666,000`.
 - Data claim akumulasi April 2026 diambil dari 14 workbook monitoring aktif di `D:\ARISAFARI\Works\FQMS - Sharp Confidential\02_LCD SEID\RAW DATA\Monitoring\01_active`.
 - Script proof FQMS akumulasi dibuat di `scripts/proof-fqms-april.mjs` dan menghasilkan `storage/proofs/fqms-accumulated-lcd-local-2026-04.csv`.
 - Script import/verifikasi FQMS akumulasi dari 14 workbook monitoring lokal dibuat di `scripts/import-fqms-accumulated-monitoring.mjs`. Default-nya membaca `.doc/raw`, membandingkan workbook terhadap proof CSV April 2026, lalu replace rows `fqms_accumulated_model_rows` untuk scope `202604/LCD/LOCAL`.
@@ -168,7 +171,7 @@ Catatan status untuk lanjut kerja di PC lain:
 - Untuk mengisi SQLite dari workbook yang sudah disertakan di repo, jalankan `node scripts/import-fqms-accumulated-monitoring.mjs`. Optional args: `<report-month> <monitoring-dir> <proof-csv-path> <database-path>`.
 - Untuk mengisi raw historis Section D dari workbook monitoring, jalankan `node scripts/import-fqms-historical-defects.mjs`. Optional args: `<report-month> <monitoring-dir> <database-path>`.
 - Untuk mengisi monthly monitoring snapshot Section A/B dari sheet `summary`, jalankan `node scripts/import-fqms-monitoring-monthly-snapshots.mjs`. Optional args: `<report-month> <monitoring-dir> <database-path>`.
-- Snapshot Section A/B April 2026 sudah terimport `171` rows dan cocok untuk accumulated defect `4,061` serta accumulated non-defect `1,025`, tetapi `ACC SALES QTY` dan `AVERAGE DEFECT PPM` tidak punya cached value sehingga result PPM/OK-NG adalah CHECK sampai sumber sales history bulanan tersedia.
+- Snapshot Section A/B April 2026 sudah terimport `171` rows dan cocok untuk accumulated defect `4,061` serta accumulated non-defect `1,025`. Cached workbook `ACC SALES QTY`/`AVERAGE DEFECT PPM` kosong, tetapi sudah diperkaya dari `sales_history_rows`; missing `ACC SALES QTY` menjadi `0`, missing `AVERAGE DEFECT PPM` tersisa `14` rows yang tetap CHECK.
 - `storage/proofs/` bisa ignored oleh git; jangan menganggap output CSV selalu ikut repo. Script proof adalah sumber regenerasi utama.
 - Final cross-check Phase 4 sudah dikonfirmasi cocok semua terhadap referensi FQMS/F-COST April 2026 LCD LOCAL. Tidak ada mismatch blocking yang tersisa untuk Phase 4.
 
@@ -185,6 +188,9 @@ Catatan status untuk lanjut kerja di PC lain:
 - [x] Tambahkan script repeatable untuk memverifikasi 14 workbook monitoring aktif `.doc/raw` terhadap proof April 2026 dan replace data SQLite jika cocok.
 - [x] Tambahkan tabel dan importer raw historis FQMS dari sheet `raw` workbook monitoring untuk Section D.
 - [x] Tambahkan tabel dan importer monthly monitoring snapshot dari sheet `summary` workbook monitoring untuk Section A/B.
+- [x] Tambahkan tabel `sales_history_rows`, repository, dan importer repeatable untuk sales history bulanan verified.
+- [x] Perkaya FQMS Section A/B snapshots dari sales history verified agar denominator `accumulated_sales * passing_month` tidak bergantung pada cached formula Excel.
+- [x] Simpan `Sales Amount` verified ke `sales_history_rows` dan `raw_sales_rows.sales_amount_rupiah` untuk audit F-COST.
 - [x] Build reusable FQMS accumulated service yang menghitung exposure dan PPM dari persisted rows + master `fqms_model_series`.
 - [x] Bandingkan FQMS quantity/count terhadap referensi Excel/PDF.
 - [x] Bandingkan F-COST amount terhadap referensi Excel/PDF.
@@ -246,9 +252,11 @@ Tujuan: preview dan Excel tidak punya logic hitung berbeda.
 - [x] Pastikan style total label Section C `C37:E37` merge dengan fill `#31869B`, font Calibri 9, dan text putih.
 - [x] Build FQMS Section D Worst Defect view model dari effective raw service rows + master action + denominator Section C.
 - [x] Build FQMS Section A/B view model dari persisted monthly monitoring snapshots, dengan CHECK saat cached denominator summary kosong.
+- [x] Update FQMS Section A/B view model agar memakai denominator sales history verified saat tersedia; status target tetap CHECK sampai target master SQLite dibuat.
 - [x] Map Section A Quality Trend source data dan Section B Acceptance Ratio ke sheet utama `FQMS`, membersihkan nilai stale template saat snapshot tersedia tetapi PPM belum terbukti.
 - [x] Map Section D Worst Defect ke sheet utama `FQMS`, bersihkan placeholder `Model A`, dan isi bucket `~Jan'26`, `Feb'26`, `Mar'26`, `Apr'26` dari `fqms_historical_defect_rows`.
 - [x] Map F-COST view model ke `templates/excel/FCOST - LCD LOCAL.xlsx`.
+- [x] Tambahkan `totalSalesAmountRupiah` dan `costVsSalesRatio` ke F-COST view model/summary audit dari sales history verified.
 - [x] Implement `POST /api/reports/export-excel`.
 - [x] Pastikan export menolak jika validation critical masih ada.
 - [x] Simpan export history jika `export_jobs` sudah tersedia.
@@ -348,3 +356,6 @@ Jangan mulai phase ini sebelum gate Slice 0 lulus.
 - [x] Preview/export FQMS memakai accumulated view model historis saat rows akumulasi tersedia; monthly summary tetap fallback.
 - [x] Section D Worst Defect memakai model aktual yang sama dengan Section C; histori older/Feb/Mar/Apr berasal dari sheet `raw` 14 workbook monitoring yang sudah dipersist ke SQLite.
 - [x] Buat master model-series FQMS final per product/manufacturer/month. Aggregation, validation, Review Anomalies, dan accumulated view model memakai master model-series, bukan baseline sales bulan berjalan.
+- [x] Sales history verified adalah sumber truth untuk FQMS/F-COST sales qty dan sales amount pada Slice 0. Duplicate report model per bulan digabung saat import, bukan ditolak atau dilewatkan.
+- [ ] Target monthly PPM dan target F-COST masih perlu table master SQLite; baseline `383` masih explicit sementara dan status target tetap CHECK.
+- [ ] F-COST Qty masih memakai `fcost_summaries.row_count`/`costRows`; belum ada table snapshot metric eksplisit bernama `F-Cost Qty`.

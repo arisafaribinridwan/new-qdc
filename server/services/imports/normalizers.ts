@@ -26,6 +26,7 @@ export function normalizeSalesRow(record: CsvRecord, rowNumber: number, importId
   const sourceModel = parseRequiredText(record.Model, 'Model', rowNumber)
   const reportModel = parseRequiredText(record['Report Model'], 'Report Model', rowNumber)
   const salesMonth = normalizeSalesMonth(record['Sales Month'], rowNumber)
+  const salesAmountRupiah = parseOptionalInteger(record['Sales Amount'], 'Sales Amount', rowNumber) ?? 0
 
   return {
     importId,
@@ -36,6 +37,7 @@ export function normalizeSalesRow(record: CsvRecord, rowNumber: number, importId
     modelCode: sourceModel,
     modelName: reportModel,
     quantity,
+    salesAmountRupiah,
     rawJson: stringifyRawRow(record)
   }
 }

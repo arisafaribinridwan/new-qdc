@@ -88,6 +88,8 @@ type ReportViewModel = {
     laborCostRupiah: number
     transportationCostRupiah: number
     totalCostRupiah: number
+    totalSalesAmountRupiah: number | null
+    costVsSalesRatio: number | null
     rawTotalCostRupiah: number
     totalCostDifferenceRupiah: number
     crossCheckStatus: 'ok' | 'check'

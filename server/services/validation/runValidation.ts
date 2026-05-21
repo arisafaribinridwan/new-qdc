@@ -277,7 +277,10 @@ function validateMappingCompleteness(
   const issues: ValidationIssueInput[] = []
   const salesMissingModel = salesRows.filter(row => !row.modelCode)
   const serviceMissingModel = serviceRows.filter(row => row.jobSheetSection === claimJobSheetSection && !row.modelCode)
-  const rowsOutsideMappings = [...salesRows, ...serviceRows]
+  const rowsOutsideMappings = [
+    ...salesRows.filter(row => !isVerifiedSalesHistoryRawSalesRow(row)),
+    ...serviceRows
+  ]
     .filter(row => !row.factoryCode || !activeFactoryCodes.has(row.factoryCode))
 
   if (activeFactoryCodes.size === 0) {
@@ -313,6 +316,18 @@ function validateMappingCompleteness(
   }
 
   return issues
+}
+
+function isVerifiedSalesHistoryRawSalesRow(row: RawSalesRow) {
+  try {
+    const parsed: unknown = JSON.parse(row.rawJson)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      && '__source' in parsed
+      && parsed.__source === 'verified_sales_history'
+  }
+  catch {
+    return false
+  }
 }
 
 function validateReimportSafety(

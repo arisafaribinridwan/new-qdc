@@ -32,6 +32,11 @@ Context penting:
   - repository `server/repositories/fqmsMonitoringMonthlySnapshots.ts`
   - service `server/services/fqmsMonitoringSnapshots.ts`
   - importer `scripts/import-fqms-monitoring-monthly-snapshots.mjs`
+- Verified sales history backend sudah tersedia dan dipakai untuk FQMS/F-COST sales qty/amount:
+  - table `sales_history_rows`
+  - repository `server/repositories/salesHistoryRows.ts`
+  - importer `scripts/import-sales-history.mjs`
+  - source CSV `.doc/sales-history-lcd-local.csv`
 - 14 workbook monitoring aktif ada di `.doc/raw/*.xlsx`.
 - File export terbaru ada di `storage/exports/202604/LCD/LOCAL/202604_LCD_LOCAL_fqms_excel.xlsx`.
 
@@ -71,15 +76,25 @@ Status terakhir yang sudah selesai:
   - rows `171`
   - report month accumulated defect `4,061`
   - accumulated non-defect through report month `1,025`
-  - missing cached `ACC SALES QTY`: `171`
-  - missing cached `AVERAGE DEFECT PPM`: `171`
+  - enriched from verified sales history
+  - missing `ACC SALES QTY`: `0`
+  - missing `AVERAGE DEFECT PPM`: `14`
+- Verified sales history `.doc/sales-history-lcd-local.csv` sudah masuk SQLite:
+  - source CSV rows `825`
+  - stored master rows `822` setelah duplicate `Report Model + Sales Month` digabung
+  - total stored sales qty `1,458,864`
+  - total stored sales amount `3,720,570,544,938`
+  - April 2026 rows `27`
+  - April 2026 sales qty `56,057`
+  - April 2026 sales amount `150,328,909,537`
+  - row `797` dan `798` untuk `2TC24HD1500I / 2026-04` digabung menjadi qty `7,232` dan amount `7,527,666,000`
 - Section A/B view model sudah dibuat dari persisted snapshot:
   - `viewModel.fqms.monitoringSnapshots`
   - source `monitoring_summary_snapshots`
   - status `check`
   - trend months `202511..202604`
-  - April result PPM `null` karena denominator belum terbukti
-  - April acceptance ratio `null` karena model PPM belum terbukti
+  - result PPM memakai denominator sales history verified jika tersedia
+  - target source masih baseline `383`, sehingga target status tetap `CHECK` sampai target master dibuat
 - Section A export sudah menulis source data hidden cells `DZ:EE`:
   - month labels terisi
   - target baseline `383` terisi sementara
@@ -107,14 +122,15 @@ Catatan penting dari inspeksi workbook/template:
   - row 12: `ACC DEFECT`
   - row 13: `AVERAGE DEFECT PPM`
 - Untuk April 2026, workbook `01-2TC32GH3000I.xlsx` memakai kolom report month `AD`.
-- Cached result untuk `ACC SALES QTY` dan `AVERAGE DEFECT PPM` kosong di workbook `.doc/raw`, sehingga jangan isi result PPM / OK-NG palsu.
+- Cached result untuk `ACC SALES QTY` dan `AVERAGE DEFECT PPM` kosong di workbook `.doc/raw`; nilai denominator/PPM Section A/B sekarang diperkaya dari `sales_history_rows` verified, bukan dari cached formula Excel.
 - Target table global product/manufacturer/fiscal half belum tersedia; sementara Section A/B dan Section C export masih membaca baseline target `383` dari template/constant dan harus dianggap `CHECK` sampai target master dibuat.
 - ExcelJS export saat ini diketahui tidak mempertahankan chart XML dari template. Jangan mengklaim chart visual final sudah preserved sebelum diverifikasi ulang di file export.
 
 Hal yang belum selesai:
-- Section A — Quality Trend belum bisa menampilkan result PPM karena denominator bulanan historis belum tersedia.
-- Section B — Acceptance Ratio belum bisa menghitung OK/NG/ratio karena PPM model bulanan belum tersedia.
+- Section A/B sudah memiliki denominator dari verified sales history, tetapi target master SQLite belum tersedia sehingga target status tetap CHECK.
 - Target monthly PPM masih baseline sementara, belum dari master target SQLite.
+- Target F-COST dan `Cost vs Target` belum dari master target SQLite.
+- `F-Cost Qty` masih partial sebagai `fcost_summaries.row_count` / `costRows`, belum sebagai metric snapshot eksplisit.
 - Chart visual Excel belum boleh dianggap final karena ExcelJS output perlu diverifikasi apakah chart parts dipertahankan.
 
 Rekomendasi task berikutnya:
@@ -250,12 +266,12 @@ Mapping terhadap list kamu:
 | 3 | Total model monitoring | **Belum disimpan sebagai kolom**. Saat ini dihitung di view model sebagai `totalModelCount` |
 | 4 | OK model monitoring | **Belum disimpan sebagai kolom**. Dihitung dari snapshot + target di [fqmsMonitoringSnapshots.ts:20-29](server/services/fqmsMonitoringSnapshots.ts#L20-L29) |
 | 5 | NG model monitoring | **Belum disimpan sebagai kolom**. Sama, masih computed |
-| 6 | Sales Amount | **Belum ada**. Yang ada Sales Qty, bukan Sales Amount/rupiah |
+| 6 | Sales Amount | **Ada untuk Slice 0.1**: `sales_history_rows.sales_amount_rupiah`, `raw_sales_rows.sales_amount_rupiah`, dan audit F-COST `totalSalesAmountRupiah` |
 | 7 | F-COST amount | **Ada sebagian** di `fcost_summaries.total_cost_rupiah`, tapi belum dalam table history snapshot |
 | 8 | Target F-COST | **Belum ada** |
-| 9 | Ratio vs Sales | **Belum ada** |
+| 9 | Ratio vs Sales | **Ada sebagian** sebagai `costVsSalesRatio = totalCostRupiah / totalSalesAmountRupiah` di F-COST summary/view model |
 | 10 | Achievement | **Belum ada**; di PRD label ini juga sudah diganti jadi `Cost vs Target` |
-| 11 | Sales Qty | **Ada**: `raw_sales_rows.quantity`, `fqms_summaries.sales_quantity`, dan `fqms_monitoring_monthly_snapshots.sales_qty` |
+| 11 | Sales Qty | **Ada**: `sales_history_rows.sales_qty`, `raw_sales_rows.quantity`, `fqms_summaries.sales_quantity`, dan `fqms_monitoring_monthly_snapshots.sales_qty` |
 | 12 | F-Cost Qty | **Ada sebagian** sebagai `fcost_summaries.row_count` / `costRows`, tapi belum eksplisit sebagai metric snapshot bernama F-Cost Qty |
 
 Jadi kesimpulannya: **yang sudah siap sebagai snapshot history paling kuat baru FQMS monitoring monthly snapshot**. Untuk list kamu yang lengkap, kita masih perlu menambahkan snapshot/history untuk F-COST + sales amount + target + ratio/achievement/cost-vs-target, atau bikin satu table metric snapshot generik supaya 12 metric itu tersimpan konsisten per month/scope.

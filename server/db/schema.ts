@@ -143,6 +143,25 @@ export const fqmsMonitoringMonthlySnapshots = sqliteTable('fqms_monitoring_month
   index('fqms_monitoring_monthly_snapshots_scope_model_idx').on(table.reportScopeId, table.reportModelCode)
 ])
 
+export const salesHistoryRows = sqliteTable('sales_history_rows', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  manufacturerId: integer('manufacturer_id').notNull().references(() => manufacturers.id, { onDelete: 'cascade' }),
+  reportModelCode: text('report_model_code').notNull(),
+  salesMonth: text('sales_month').notNull(),
+  salesQty: integer('sales_qty').notNull().default(0),
+  salesAmountRupiah: integer('sales_amount_rupiah').notNull().default(0),
+  sourceFilename: text('source_filename').notNull(),
+  rowNumber: integer('row_number').notNull(),
+  rawJson: text('raw_json').notNull(),
+  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`)
+}, table => [
+  uniqueIndex('sales_history_rows_scope_model_month_unique').on(table.productId, table.manufacturerId, table.reportModelCode, table.salesMonth),
+  index('sales_history_rows_scope_month_idx').on(table.productId, table.manufacturerId, table.salesMonth),
+  index('sales_history_rows_scope_model_idx').on(table.productId, table.manufacturerId, table.reportModelCode)
+])
+
 export const dataImports = sqliteTable('data_imports', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   reportScopeId: integer('report_scope_id').notNull().references(() => reportScopes.id, { onDelete: 'cascade' }),
@@ -185,6 +204,7 @@ export const rawSalesRows = sqliteTable('raw_sales_rows', {
   modelCode: text('model_code'),
   modelName: text('model_name'),
   quantity: integer('quantity').notNull().default(0),
+  salesAmountRupiah: integer('sales_amount_rupiah').notNull().default(0),
   rawJson: text('raw_json').notNull(),
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`)
 }, table => [

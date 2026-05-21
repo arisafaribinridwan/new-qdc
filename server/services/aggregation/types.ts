@@ -14,6 +14,8 @@ export type AggregationStatus = 'ok' | 'check'
 export type FqmsAggregationDetails = {
   monthKey: string
   salesRows: number
+  salesHistoryRows: number
+  salesSource: 'verified_sales_history' | 'raw_sales_import'
   masterModelSeriesRows: number
   claimRows: number
   ignoredServiceRows: number
@@ -29,6 +31,9 @@ export type FcostAggregationDetails = {
   monthKey: string
   serviceRows: number
   costRows: number
+  salesHistoryRows: number
+  totalSalesAmountRupiah: number | null
+  costVsSalesRatio: number | null
   itemCostTotalRupiah: number
   rawTotalCostRupiah: number
   totalCostDifferenceRupiah: number

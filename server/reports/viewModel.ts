@@ -22,6 +22,8 @@ type FqmsDetails = {
 type FcostDetails = {
   serviceRows?: number
   costRows?: number
+  totalSalesAmountRupiah?: number | null
+  costVsSalesRatio?: number | null
   rawTotalCostRupiah?: number
   totalCostDifferenceRupiah?: number
   crossCheckStatus?: 'ok' | 'check'
@@ -137,6 +139,8 @@ export function getReportViewModel(input: ReportScopeInput = {}): ReportViewMode
           laborCostRupiah: fcost.laborCostRupiah,
           transportationCostRupiah: fcost.transportationCostRupiah,
           totalCostRupiah: fcost.totalCostRupiah,
+          totalSalesAmountRupiah: typeof fcostDetails.totalSalesAmountRupiah === 'number' ? fcostDetails.totalSalesAmountRupiah : null,
+          costVsSalesRatio: typeof fcostDetails.costVsSalesRatio === 'number' ? fcostDetails.costVsSalesRatio : null,
           rawTotalCostRupiah: Number(fcostDetails.rawTotalCostRupiah ?? fcost.totalCostRupiah),
           totalCostDifferenceRupiah: Number(fcostDetails.totalCostDifferenceRupiah ?? 0),
           crossCheckStatus: fcostDetails.crossCheckStatus ?? 'check',

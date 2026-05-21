@@ -1,6 +1,6 @@
 # Spec Report F-COST — QRCC Data Center
 
-> **Versi**: 1.0 · **Terakhir diperbarui**: 2026-05-17
+> **Versi**: 1.1 · **Terakhir diperbarui**: 2026-05-21
 >
 > Dokumen ini adalah spesifikasi report F-COST. Untuk PRD core lihat [`prd.md`](prd.md). Untuk backend view model dan API lihat [`backend.md`](backend.md).
 
@@ -27,6 +27,8 @@ F-COST MVP terdiri dari:
 ### 13.3 Amount unit
 
 Template lama memakai satuan `Amount < Rp. K>`. Sistem harus konsisten menyimpan dan menampilkan amount sesuai satuan yang disepakati. Jika CSV berisi rupiah penuh, service harus mengkonversi ke Rp K sebelum report, atau menyimpan rupiah penuh dan view model melakukan scaling. Keputusan implementasi harus konsisten dan terdokumentasi di constant.
+
+Implementasi Slice 0 menyimpan semua amount dalam rupiah mentah di SQLite. Scaling ke `Rp. K` hanya dilakukan pada display/export jika template memerlukannya.
 
 ### 13.4 Reporting period
 
@@ -65,6 +67,15 @@ Field utama per periode:
 | Ratio % | `fcost_qty / sales_qty` |
 | LY F-Cost | F-COST bulan yang sama satu tahun sebelumnya |
 | Ratio vs LY F-Cost | `fcost_amount / ly_fcost` |
+
+Implementasi Slice 0.1:
+
+- Sales history verified disimpan di `sales_history_rows` dari `.doc/sales-history-lcd-local.csv` dengan `sales_qty` dan `sales_amount_rupiah`.
+- Duplicate `Report Model + Sales Month` digabung saat import dengan penjumlahan qty/amount. April 2026 LCD LOCAL menghasilkan sales qty `56,057` dan sales amount `150,328,909,537`.
+- `raw_sales_rows.sales_amount_rupiah` ikut diisi untuk report month agar audit import sales bulanan tetap lengkap.
+- F-COST summary/view model menyimpan `totalSalesAmountRupiah` dan `costVsSalesRatio = totalCostRupiah / totalSalesAmountRupiah` sebagai audit awal Ratio vs Sales.
+- `F-Cost Qty` pada Slice 0 masih diwakili oleh `fcost_summaries.row_count`/`costRows` dari valid cost rows. Belum ada table snapshot metric eksplisit bernama `F-Cost Qty`.
+- Target F-COST dan `Cost vs Target` belum final sampai target master SQLite dibuat.
 
 Total current fiscal half:
 

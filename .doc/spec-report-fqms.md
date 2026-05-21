@@ -1,6 +1,6 @@
 # Spec Report FQMS — QRCC Data Center
 
-> **Versi**: 1.2 · **Terakhir diperbarui**: 2026-05-21
+> **Versi**: 1.3 · **Terakhir diperbarui**: 2026-05-21
 >
 > Dokumen ini adalah spesifikasi report FQMS. Untuk PRD core lihat [`prd.md`](prd.md). Untuk backend view model dan API lihat [`backend.md`](backend.md).
 
@@ -112,7 +112,10 @@ Implementasi Slice 0.1:
 
 - Snapshot bulanan disimpan di SQLite table `fqms_monitoring_monthly_snapshots` dari sheet `summary` 14 workbook monitoring aktif.
 - Importer menyimpan `passing_month`, `sales_qty`, `accumulated_sales`, `monthly_defect_qty`, `accumulated_defect_qty`, `monthly_non_defect_qty`, dan `average_defect_ppm` per model per bulan beserta `source_json`.
-- Jika cached result `ACC SALES QTY` atau `AVERAGE DEFECT PPM` kosong di workbook, nilai disimpan `NULL` dan Section A mengembalikan `CHECK`/blank untuk result PPM, bukan angka palsu.
+- Cached workbook `ACC SALES QTY` dan `AVERAGE DEFECT PPM` tidak dipakai sebagai database final. Jika cached value kosong, importer snapshot menyimpan `NULL` lebih dulu, lalu `scripts/import-sales-history.mjs` memperkaya snapshot dari `sales_history_rows` verified.
+- Sales history verified disimpan di SQLite table `sales_history_rows` dari `.doc/sales-history-lcd-local.csv`. Satu row adalah satu `Report Model + Sales Month` dengan `sales_qty` dan `sales_amount_rupiah`; duplicate model/bulan digabung dengan penjumlahan qty/amount.
+- Untuk April 2026 LCD LOCAL, source CSV `825` rows menjadi `822` rows master setelah duplicate digabung. April 2026 sales qty adalah `56,057` dan sales amount `150,328,909,537`. Duplicate `2TC24HD1500I / 2026-04` dari row `797` dan `798` digabung menjadi qty `7,232` dan amount `7,527,666,000`.
+- Section A menghitung result PPM dari total exposure snapshot (`accumulated_sales * passing_month`) setelah sales history tersedia. Jika denominator tetap missing/zero, result PPM tetap `CHECK`/blank, bukan angka palsu.
 - Karena target table belum tersedia, target monthly PPM sementara memakai baseline template `383` dengan `targetSource = template_baseline` dan status `CHECK` sampai target master dibuat.
 
 ### 12.7 Section B — Acceptance Ratio
@@ -131,8 +134,9 @@ Label fiscal half seperti `2025FH` mengambil nilai dari data bulan terakhir di f
 Implementasi Slice 0.1:
 
 - Section B membaca persisted monthly snapshot yang sama dengan Section A.
-- `OK/NG` dihitung hanya jika `average_defect_ppm` atau denominator `accumulated_sales × passing_month` tersedia dan target monthly PPM tersedia.
-- Jika PPM model belum dapat dibuktikan karena cached denominator kosong, `ok_models`, `ng_models`, dan `acceptance_ratio` dikosongkan serta `checkModelCount` menunjukkan jumlah model yang perlu sumber sales history bulanan.
+- `OK/NG` dihitung hanya jika `average_defect_ppm` atau denominator `accumulated_sales * passing_month` tersedia dan target monthly PPM tersedia.
+- Setelah sales history verified tersedia, model PPM dihitung dari snapshot enriched. Jika PPM model belum dapat dibuktikan karena denominator missing/zero, `ok_models`, `ng_models`, dan `acceptance_ratio` dikosongkan serta `checkModelCount` menunjukkan jumlah model yang masih CHECK.
+- Target monthly PPM masih memakai baseline explicit `383` sampai target master SQLite dibuat; karena itu `targetStatus` tetap `CHECK` walaupun denominator sales history sudah tersedia.
 - Export Excel menghapus nilai stale template pada row Acceptance Ratio dan mengisi hanya label/count/ratio yang ada di view model.
 
 ### 12.8 Section D — Worst Defect

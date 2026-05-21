@@ -5,6 +5,7 @@ import {
   createFqmsSummariesRepository,
   createImportsRepository,
   createRawSalesRowsRepository,
+  createSalesHistoryRowsRepository,
   createScopesRepository
 } from '../../repositories'
 import { createActiveFqmsModelCodes, matchesActiveFqmsModel } from '../fqmsModelSeries'
@@ -39,6 +40,7 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
   return database.transaction((tx) => {
     const importsRepository = createImportsRepository(tx)
     const rawSalesRowsRepository = createRawSalesRowsRepository(tx)
+    const salesHistoryRowsRepository = createSalesHistoryRowsRepository(tx)
     const fqmsModelSeriesRepository = createFqmsModelSeriesRepository(tx)
     const fqmsSummariesRepository = createFqmsSummariesRepository(tx)
     const fcostSummariesRepository = createFcostSummariesRepository(tx)
@@ -48,6 +50,9 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
     const salesRows = rawSalesRowsRepository
       .findByReportScopeId(scopeResult.scope.id)
       .filter(row => row.salesMonth === scopeInput.monthKey)
+    const salesHistoryRows = salesHistoryRowsRepository
+      .listByScope(scopeResult.product.id, scopeResult.manufacturer.id)
+      .filter(row => row.salesMonth === scopeInput.monthKey)
     const serviceRows = listEffectiveRawServiceRowsByScopeId(scopeResult.scope.id, tx)
       .filter(row => row.keydate === scopeInput.monthKey)
     const activeFqmsModelSeries = fqmsModelSeriesRepository.listActiveByScope(
@@ -56,7 +61,15 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
       scopeInput.monthKey
     )
 
-    const salesQuantity = sumBy(salesRows, row => row.quantity)
+    const hasVerifiedSalesHistory = salesHistoryRows.length > 0
+    const salesQuantity = hasVerifiedSalesHistory
+      ? sumBy(salesHistoryRows, row => row.salesQty)
+      : sumBy(salesRows, row => row.quantity)
+    const totalSalesAmountRupiah = hasVerifiedSalesHistory
+      ? sumBy(salesHistoryRows, row => row.salesAmountRupiah)
+      : salesRows.length > 0
+        ? sumBy(salesRows, row => row.salesAmountRupiah)
+        : null
     const activeFqmsModelCodes = createActiveFqmsModelCodes(activeFqmsModelSeries)
     const fqmsCandidateRows = serviceRows.filter(row => isFqmsCandidateRow(row, activeFqmsModelCodes))
     const claimRows = fqmsCandidateRows.filter(isFqmsReportableClaimRow)
@@ -69,6 +82,8 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
     const fqmsDetails: FqmsAggregationDetails = {
       monthKey: scopeInput.monthKey,
       salesRows: salesRows.length,
+      salesHistoryRows: salesHistoryRows.length,
+      salesSource: hasVerifiedSalesHistory ? 'verified_sales_history' : 'raw_sales_import',
       masterModelSeriesRows: activeFqmsModelSeries.length,
       claimRows: claimRows.length,
       ignoredServiceRows: serviceRows.length - fqmsCandidateRows.length,
@@ -105,6 +120,11 @@ export function reprocessScopeAggregation(input: AggregationScopeInput = {}): Ag
       monthKey: scopeInput.monthKey,
       serviceRows: serviceRows.length,
       costRows: costRows.length,
+      salesHistoryRows: salesHistoryRows.length,
+      totalSalesAmountRupiah,
+      costVsSalesRatio: totalSalesAmountRupiah && totalSalesAmountRupiah !== 0
+        ? Number((totalCostRupiah / totalSalesAmountRupiah).toFixed(12))
+        : null,
       itemCostTotalRupiah: totalCostRupiah,
       rawTotalCostRupiah,
       totalCostDifferenceRupiah,

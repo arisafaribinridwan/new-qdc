@@ -462,6 +462,8 @@ function fillFcostTemplate(workbook: ExcelJS.Workbook, viewModel: ReportViewMode
     ['Labor Cost Rupiah', viewModel.fcost?.laborCostRupiah ?? null],
     ['Transportation Cost Rupiah', viewModel.fcost?.transportationCostRupiah ?? null],
     ['Total Cost Rupiah', viewModel.fcost?.totalCostRupiah ?? null],
+    ['Total Sales Amount Rupiah', viewModel.fcost?.totalSalesAmountRupiah ?? null],
+    ['Cost vs Sales Ratio', viewModel.fcost?.costVsSalesRatio ?? null],
     ['Raw Total Cost Rupiah', viewModel.fcost?.rawTotalCostRupiah ?? null],
     ['Total Cost Difference Rupiah', viewModel.fcost?.totalCostDifferenceRupiah ?? null],
     ['Cross Check Status', viewModel.fcost?.crossCheckStatus ?? null],
